@@ -9,7 +9,8 @@ This repo is consolidation important references about Azure Route Server:
 
 ## Considerations
 
-(coming soon)
+- Default route (0.0.0.0/0) does not propagate over VPN Virtual Network Gateway (VNG).
+    - Solution: Split 0.0.0.0/0 in two networks 0.0.0.0/1 and 128.0.0.0/1 and VPN VNG will be able to advertise that split range to the other side.
 
 ## Recommended references
 
