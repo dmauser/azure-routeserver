@@ -14,7 +14,7 @@ instances=2 #NVA instances
 asn_quagga=65004 # Set ASN
 # Set Networks to be propagated
 bgp_network1=0.0.0.0/0 #Default Route Propagation
-bgp_network2=10.0.0.0/20 #Summary route for Hub/Spoke transit
+bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
 
 #Variables
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
@@ -47,40 +47,42 @@ az deployment group create --name lab-$RANDOM --resource-group $rg \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
 --output none
 
-
-az network vnet subnet create --address-prefix $nvasubnetprefix --name $nvasubnetname --resource-group $rg --vnet-name $vnetname --output none
+# Creating NVA VNET
+echo Creating NVA VNET
+az network vnet subnet create --address-prefix $nvasubnetprefix --name $nvasubnetname --resource-group $rg --vnet-name $AzurehubName-vnet --output none
 
 #UDR Internet Breakout NVA Internet
-az network route-table create --name $vnetname-rt-nva --resource-group $rg --location $location -o none
-az network route-table route create --resource-group $rg --name default-to-Internet --route-table-name $vnetname-rt-nva  \
+echo Creating UDR Internet Breakout
+az network route-table create --name $AzurehubName-rt-nva --resource-group $rg --location $location -o none
+az network route-table route create --resource-group $rg --name default-to-Internet --route-table-name $AzurehubName-rt-nva  \
  --address-prefix 0.0.0.0/0 \
  --next-hop-type Internet \
  --output none
-az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $vnetname --route-table $vnetname-rt-nva -o none
-
+az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $AzurehubName-vnet --route-table $AzurehubName-rt-nva -o none
 
 #Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
-az network lb create -g $rg --name $vnetname-linux-nvalb --sku Standard --frontend-ip-name frontendip1 --backend-pool-name nvabackend --vnet-name $vnetname --subnet=$nvasubnetname --output none
-az network lb probe create -g $rg --lb-name $vnetname-linux-nvalb --name sshprobe --protocol tcp --port 22 --output none  
-az network lb rule create -g $rg --lb-name $vnetname-linux-nvalb --name haportrule1 --protocol all --frontend-ip-name frontendip1 --backend-pool-name nvabackend --probe-name sshprobe --frontend-port 0 --backend-port 0 --output none
+echo Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
+az network lb create -g $rg --name $AzurehubName-linux-nvalb --sku Standard --frontend-ip-name frontendip1 --backend-pool-name nvabackend --vnet-name $AzurehubName-vnet --subnet=$nvasubnetname --output none
+az network lb probe create -g $rg --lb-name $AzurehubName-linux-nvalb --name sshprobe --protocol tcp --port 22 --output none  
+az network lb rule create -g $rg --lb-name $AzurehubName-linux-nvalb --name haportrule1 --protocol all --frontend-ip-name frontendip1 --backend-pool-name nvabackend --probe-name sshprobe --frontend-port 0 --backend-port 0 --output none
 
 # Deploy NVA instances on the target VNET above.
 echo Validating RouteServer provisioning before deploying the NVA
 prState=''
 while [[ $prState != 'Succeeded' ]];
 do
-    prState=$(az network routeserver show --resource-group $rg --name $vnetname-rs -g $rg  --query 'provisioningState' -o tsv)
-    echo "RouteServer $vnetname-rs provisioningState="$prState
+    prState=$(az network routeserver show --resource-group $rg --name $AzurehubName-routeserver -g $rg  --query 'provisioningState' -o tsv)
+    echo "RouteServer $AzurehubName-routeserver provisioningState="$prState
     sleep 5
 done
 
 echo Provisioning NVAs
-nexthopip=$(az network lb show -g $rg --name $vnetname-linux-nvalb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv) #Set Next-Hop IP
-nvanames=$(i=1;while [ $i -le $instances ];do echo $vnetname-$nvaname$i; ((i++));done)
+nexthopip=$(az network lb show -g $rg --name $AzurehubName-linux-nvalb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv) #Set Next-Hop IP
+nvanames=$(i=1;while [ $i -le $instances ];do echo $AzurehubName-$nvaname$i; ((i++));done)
 for nvaname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
- az vm create -n $nvaname  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $vnetname --admin-username $username --admin-password $password --nsg "" --output none
+ az vm create -n $nvaname  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
  
  #NVA BGP config variables (do not change)
  bgp_routerId=$(az network nic show --name "$nvaname"VMNic --resource-group $rg --query ipConfigurations[0].privateIpAddress -o tsv)
@@ -89,13 +91,13 @@ do
 
  # Enable routing and NAT on Linux NVA:
  # Enable routing, NAT and BGP on Linux NVA:
- scripturi="https://raw.githubusercontent.com/dmauser/AzureVM-Router/master/linuxrouterbgpnh.sh"
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgp.sh"
  az vm extension set --resource-group $rg --vm-name $nvaname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpnh.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgp.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
  --no-wait 
 
  # Build Route Server BGP Peering
- az network routeserver peering create --resource-group $rg --routeserver $vnetname-rs --name $nvaname --peer-asn $asn_quagga \
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaname --peer-asn $asn_quagga \
  --peer-ip $(az network nic show --name "$nvaname"VMNic --resource-group $rg --query ipConfigurations[0].privateIpAddress -o tsv) \
  --output none
 done
@@ -108,7 +110,7 @@ do
   --ip-config-name ipconfig"$vm" \
   --nic-name "$vm"VMNic \
   --resource-group $rg \
-  --lb-name $vnetname-linux-nvalb \
+  --lb-name $AzurehubName-linux-nvalb \
   --output none
 done
 

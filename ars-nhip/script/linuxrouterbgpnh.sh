@@ -102,9 +102,11 @@ router bgp $asn_quagga
  network $bgp_network1
  network $bgp_network2
  neighbor $routeserver_IP1 remote-as 65515
+ neighbor $routeserver_IP1 ebgp-multihop 255
  neighbor $routeserver_IP1 soft-reconfiguration inbound
  neighbor $routeserver_IP1 route-map nexthop out
  neighbor $routeserver_IP2 remote-as 65515
+ neighbor $routeserver_IP2 ebgp-multihop 255
  neighbor $routeserver_IP2 soft-reconfiguration inbound
  neighbor $routeserver_IP2 route-map nexthop out
 !
