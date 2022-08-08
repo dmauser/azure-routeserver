@@ -1,6 +1,6 @@
 #Parameters
-rg=lab-ars-nhip #Define your resource group
-location=centralus #Set location
+rg=lab-ars-nhip2 #Define your resource group
+location=eastus #Set location
 username=azureuser
 password=Msft123Msft123
 virtualMachineSize=Standard_DS1_v2
@@ -45,7 +45,16 @@ az group create --name $rg --location $location --output none
 az deployment group create --name lab-$RANDOM --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
---output none
+--no-wait
+
+echo Validating $AzurehubName-vnet provisioning before deploying the NVA
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet show --name $AzurehubName-vnet -g $rg --query 'provisioningState' -o tsv)
+    echo "VNET $AzurehubName-vnet provisioning status provisioningState="$prState
+    sleep 5
+done
 
 # Creating NVA VNET
 echo Creating NVA VNET
