@@ -1,6 +1,6 @@
 #Parameters
-rg=lab-ars-nhip2 #Define your resource group
-location=eastus #Set location
+rg=lab-ars-nhip #Define your resource group
+location=centralus #Set location
 username=azureuser
 password=Msft123Msft123
 virtualMachineSize=Standard_DS1_v2
@@ -45,20 +45,19 @@ az group create --name $rg --location $location --output none
 az deployment group create --name lab-$RANDOM --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
---no-wait
-
-echo Validating $AzurehubName-vnet provisioning before deploying the NVA
-prState=''
-while [[ $prState != 'Succeeded' ]];
-do
-    prState=$(az network vnet show --name $AzurehubName-vnet -g $rg --query 'provisioningState' -o tsv)
-    echo "VNET $AzurehubName-vnet provisioning status provisioningState="$prState
-    sleep 5
-done
+--output none
 
 # Creating NVA VNET
 echo Creating NVA VNET
 az network vnet subnet create --address-prefix $nvasubnetprefix --name $nvasubnetname --resource-group $rg --vnet-name $AzurehubName-vnet --output none
+
+
+# NSG:
+echo Creating NSG and associate to NVA Subnet
+az network nsg create --resource-group $rg --name $AzurehubName-nva-nsg --location $location -o none
+az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'default-allow-ssh' --direction Inbound --priority 100 --source-address-prefixes $mypip --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges 22 --access Allow --protocol Tcp --description "Allow inbound SSH" --output none
+az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'allow-nva-breakout' --direction Inbound --priority 200 --source-address-prefixes VirtualNetwork --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges "*" --access Allow --protocol "*" --description "Allow NVA single NIC use Internet Breakout" --output none
+az network vnet subnet update -g $rg --name $nvasubnetname --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg -o none
 
 #UDR Internet Breakout NVA Internet
 echo Creating UDR Internet Breakout
@@ -92,7 +91,8 @@ for nvaname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
  az vm create -n $nvaname  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
- 
+ az network nic update -n "$nvaname"VMNic -g $rg --ip-forwarding true --output none 
+
  #NVA BGP config variables (do not change)
  bgp_routerId=$(az network nic show --name "$nvaname"VMNic --resource-group $rg --query ipConfigurations[0].privateIpAddress -o tsv)
  routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
