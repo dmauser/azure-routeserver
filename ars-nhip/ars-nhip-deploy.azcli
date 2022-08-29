@@ -165,7 +165,7 @@ sudo hping3 10.0.12.4 -S -p 80 -c 10
 curl 10.0.12.4
 
 #Enable IPTables NVA by allowing TCP port 80 (HTTP)
-echo 'Enable IPTables NVA by allowing TCP port 80 (HTTP)'
+echo 'Enable IPTables NVA by allowing TCP few ports 80, 53, 443, 22, 5201'
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 for nvaintname in $nvanames
 do
@@ -199,7 +199,8 @@ ping 10.0.11.4
 sudo hping3 10.0.11.4 -S -p 80 -c 10
 curl 10.0.11.4
 
-# Leave networking captures running on NVA1 and NVA2
+# Review IPtables and start network captures running on both NVA1 and NVA2
+sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.11.4 and host 10.0.12.4
 
 # ********* Turn off one of the NVAs above and re-run the same tests:
@@ -223,22 +224,8 @@ ping 10.0.11.4
 sudo hping3 10.0.11.4 -S -p 80 -c 10
 curl 10.0.11.4
 
-
-
-
-echo Peering NVAs with Route Server + Next IP to Load Balancer
-nexthopip=$(az network lb show -g $rg --name $AzurehubName-linux-nvalb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv) #Set Next-Hop IP
-nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
-for nvaintname in $nvanames
-do
- # Enable routing, NAT and BGP on Linux NVA:
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgpnh.sh"
- az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpnh.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
- --no-wait
-done
-
-# Check Spoke VMs route tables
+# ********* Bring back the NVA and make sure both are up and running:
+# OPTIONAL: Run the commands below if you want to revalidate connectivity:
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
@@ -246,6 +233,45 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Na
 echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+# Can az-spk1-lxvm1 reach az-spk2-lxvm2?
+# Access Bastion or Serial console on az-SPK1-lxvm:
+# Run the following to SPK2-lxvm1
+ping 10.0.12.4
+sudo hping3 10.0.12.4 -S -p 80 -c 10
+curl 10.0.12.4
+
+# Access Bastion or Serial console on az-SPK2-lxvm:
+# Run the following
+ping 10.0.11.4
+sudo hping3 10.0.11.4 -S -p 80 -c 10
+curl 10.0.11.4
+
+# Before running next session make sure both NVAs are up and running
+echo Peering NVAs with Route Server + Next IP to Load Balancer
+# Set Next-Hop IP
+nexthopip=$(az network lb show -g $rg --name $AzurehubName-linux-nvalb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv) 
+nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
+for nvaintname in $nvanames
+do
+ # Enable routing, NAT and BGP on Linux NVA:
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgpnh.sh"
+ az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpnh.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
+ --force-update \
+ --no-wait
+done
+
+# Check Spoke VMs route tables
+echo Load Balancer IP:
+az network lb show -g $rg --name $AzurehubName-linux-nvalb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv
+echo Check Spoke VMs Route tables:
+echo $Azurespoke1Name-lxvm &&\
+az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table
+echo $Azurespoke2Name-lxvm &&\
+az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+
 
 #NSG and UDR Internet Breakout NVA Internet
 echo Adjusting NSG for Internet Breakout
