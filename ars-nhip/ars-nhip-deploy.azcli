@@ -316,8 +316,11 @@ for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o 
   --name $nva \
   --routeserver $AzurehubName-routeserver 
   --query RouteServiceRole_IN_1.[]
-  done
 
-  az network routeserver peering list-learned-routes --resource-group $rg 
-  --name $nva --routeserver $AzurehubName-routeserver 
-  --query RouteServiceRole_IN_1.[]
+  done
+az network routeserver peering list-learned-routes --resource-group $rg --name $nva --routeserver $AzurehubName-routeserver --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1]"
+
+-o table
+
+
+az network routeserver peering list-learned-routes --resource-group $rg --name $nva --routeserver $AzurehubName-routeserver
