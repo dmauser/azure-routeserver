@@ -47,6 +47,14 @@ az deployment group create --name lab-$RANDOM --resource-group $rg \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
 --output none
 
+#Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
+echo Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
+az network lb create -g $rg --name $AzurehubName-linux-nvalb --sku Standard --frontend-ip-name frontendip1 --backend-pool-name nvabackend --vnet-name $AzurehubName-vnet --subnet=$nvasubnetname --output none
+az network lb probe create -g $rg --lb-name $AzurehubName-linux-nvalb --name sshprobe --protocol tcp --port 22 --output none  
+az network lb rule create -g $rg --lb-name $AzurehubName-linux-nvalb --name haportrule1 --protocol all --frontend-ip-name frontendip1 --backend-pool-name nvabackend --probe-name sshprobe --frontend-port 0 --backend-port 0 --output none
+
+# Deploy NVA instances on the target VNET above.
+
 # Creating NVA VNET
 echo Creating NVA VNET
 az network vnet subnet create --address-prefix $nvasubnetprefix --name $nvasubnetname --resource-group $rg --vnet-name $AzurehubName-vnet --output none
@@ -67,13 +75,6 @@ az network route-table route create --resource-group $rg --name default-to-Inter
  --output none
 az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $AzurehubName-vnet --route-table $AzurehubName-rt-nva -o none
 
-#Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
-echo Creating Internal Load Balancer, Frontend IP, Backend, probe and LB Rule.
-az network lb create -g $rg --name $AzurehubName-linux-nvalb --sku Standard --frontend-ip-name frontendip1 --backend-pool-name nvabackend --vnet-name $AzurehubName-vnet --subnet=$nvasubnetname --output none
-az network lb probe create -g $rg --lb-name $AzurehubName-linux-nvalb --name sshprobe --protocol tcp --port 22 --output none  
-az network lb rule create -g $rg --lb-name $AzurehubName-linux-nvalb --name haportrule1 --protocol all --frontend-ip-name frontendip1 --backend-pool-name nvabackend --probe-name sshprobe --frontend-port 0 --backend-port 0 --output none
-
-# Deploy NVA instances on the target VNET above.
 echo Validating RouteServer provisioning before deploying the NVA
 prState=''
 while [[ $prState != 'Succeeded' ]];
