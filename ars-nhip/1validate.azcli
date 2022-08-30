@@ -17,7 +17,7 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.12.4
+ping 10.0.12.4 -c 5
 sudo hping3 10.0.12.4 -S -p 80 -c 10
 curl 10.0.12.4
 

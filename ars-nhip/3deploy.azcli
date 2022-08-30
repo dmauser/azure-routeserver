@@ -1,20 +1,5 @@
 #Parameters
 rg=lab-ars-nhip #Define your resource group
-location=centralus #Set location
-username=azureuser
-password=Msft123Msft123
-virtualMachineSize=Standard_DS1_v2
-
-# NVA specific parameters
-nvasubnetname=nvasubnet
-nvasubnetprefix="10.0.10.160/28"
-nvaname=nva
-instances=2 #NVA instances
-#Specific NVA BGP settings
-asn_quagga=65004 # Set ASN
-# Set Networks to be propagated
-bgp_network1=0.0.0.0/0 #Default Route Propagation
-bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
 
 #Enable IPTables NVA by allowing TCP port 80 (HTTP)
 echo 'Enable IPTables NVA by allowing TCP few ports 80, 53, 443, 22, 5201'
@@ -22,7 +7,7 @@ nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o ts
 for nvaintname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
- echo Configuring IPtables rules on $nvaintname
+ echo Enabling IPtables rules on $nvaintname
  scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
  --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./iptables.sh\"}" \

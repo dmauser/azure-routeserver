@@ -305,29 +305,31 @@ az network routeserver list --resource-group $rg --query '{IPs:[].virtualRouterI
 az network routeserver peering list --resource-group $rg --routeserver $AzurehubName-routeserver -o table 
 # RS advertised routes to NVA1 and NVA2
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
-  do
+do
   echo Advertised routes from RS $AzurehubName-routeserver to $nva
-  az network routeserver peering list-advertised-routes --resource-group $rg \
-  --name $nva \
-  --routeserver $AzurehubName-routeserver 
-  done
+  az network routeserver peering list-advertised-routes \
+   --resource-group $rg \
+   --name $nva \
+   --routeserver $AzurehubName-routeserver \
+   --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
+   --output table
+  echo -e
+done
 
 # RS learned routes
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
-  do
+do
   echo Learned routes on RS $AzurehubName-routeserver from $nva
-  az network routeserver peering list-learned-routes --resource-group $rg \
-  --name $nva \
-  --routeserver $AzurehubName-routeserver 
-  --query RouteServiceRole_IN_1.[]
+  az network routeserver peering list-learned-routes \
+   --resource-group $rg \
+   --name $nva \
+   --routeserver $AzurehubName-routeserver \
+   --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
+   --output table
+  echo -e
+done
 
-  done
 
-
-az network routeserver peering list-learned-routes --resource-group $rg --name $nva --routeserver $AzurehubName-routeserver --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1].{[].bgp}"
-
-
-az network routeserver peering list-learned-routes --resource-group $rg --name $nva --routeserver $AzurehubName-routeserver
 
 
 
