@@ -1,6 +1,7 @@
 #Parameters
 rg=lab-ars-nhip #Define your resource group
 
+
 #Enable IPTables NVA by allowing TCP port 80 (HTTP)
 echo 'Enable IPTables NVA by allowing TCP few ports 80, 53, 443, 22, 5201'
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
