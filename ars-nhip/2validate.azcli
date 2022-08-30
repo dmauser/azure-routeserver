@@ -13,6 +13,7 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Na
 echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-spk1-lxvm1:
 # Run the following

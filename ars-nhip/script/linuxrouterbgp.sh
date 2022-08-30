@@ -122,5 +122,7 @@ systemctl enable bgpd.service
 
 ## run the daemons
 echo "start zebra and quagga daemons"
-systemctl start zebra 
-systemctl start bgpd  
+systemctl restart zebra
+systemctl restart bgpd 
+systemctl start zebra
+systemctl start bgpd 
