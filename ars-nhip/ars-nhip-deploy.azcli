@@ -177,7 +177,6 @@ do
  --no-wait
 done
 
-
 # Validations after configuring NVAs with IPtables.
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
