@@ -1,0 +1,12 @@
+# BEFORE deploy
+# Validate internet access
+# Run the following on either spk1-lxvm or spk2-lxvm
+nc -v -z 8.8.8.8 53
+curl ifconfig.io
+
+# Run deploy
+# Why do I neeed to make those changes on UDR and NSG to the Internet Breakout to work.
+
+# Re-run the commands again:
+nc -v -z 8.8.8.8 53
+curl ifconfig.io

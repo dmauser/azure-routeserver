@@ -1,0 +1,31 @@
+#Parameters
+rg=lab-ars-nhip #Define your resource group
+location=$(az group show -n $rg --query location -o tsv)
+nvasubnetname=nvasubnet
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+Azurespoke1Name=az-spk1 #Azure Spoke 1 name
+Azurespoke2Name=az-spk2 #Azure Spoke 1 name
+
+#NSG and UDR Internet Breakout NVA Internet
+echo Adjusting NSG for Internet Breakout
+az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg \
+ -n 'allow-nva-inetbreakout' \
+ --direction Inbound \
+ --priority 200 \
+ --source-address-prefixes VirtualNetwork \
+ --source-port-ranges '*' \
+ --destination-address-prefixes '*' \
+ --destination-port-ranges "*" \
+ --access Allow --protocol "*" \
+ --description "Allow NVA single NIC use Internet Breakout" \
+ --output none
+
+echo Creating UDR Internet Breakout and associate it to $nvasubnetname
+az network route-table create --name $AzurehubName-rt-nva --resource-group $rg --location $location -o none
+az network route-table route create --resource-group $rg --name default-to-Internet --route-table-name $AzurehubName-rt-nva  \
+ --address-prefix 0.0.0.0/0 \
+ --next-hop-type Internet \
+ --output none
+az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $AzurehubName-vnet --route-table $AzurehubName-rt-nva -o none

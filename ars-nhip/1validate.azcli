@@ -1,0 +1,29 @@
+#Parameters
+rg=lab-ars-nhip #Define your resource group
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+Azurespoke1Name=az-spk1 #Azure Spoke 1 name
+Azurespoke2Name=az-spk2 #Azure Spoke 1 name
+
+# Check Spoke VMs route tables
+echo Check Spoke VMs Route tables:
+echo $Azurespoke1Name-lxvm &&\
+az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table
+echo $Azurespoke2Name-lxvm &&\
+az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+
+# Can az-spk1-lxvm1 reach az-spk2-lxvm2?
+# Access Bastion or Serial console on az-SPK1-lxvm:
+# Run the following to SPK2-lxvm1
+ping 10.0.12.4
+sudo hping3 10.0.12.4 -S -p 80 -c 10
+curl 10.0.12.4
+
+# Access Bastion or Serial console on az-SPK2-lxvm:
+# Run the following
+ping 10.0.11.4
+sudo hping3 10.0.11.4 -S -p 80 -c 10
+curl 10.0.11.4
+
