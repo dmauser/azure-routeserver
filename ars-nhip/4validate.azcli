@@ -1,6 +1,6 @@
 #Parameters
 rg=lab-ars-nhip #Define your resource group
-nvaname=nva
+nvaname=lxnva
 #Define parameters for Azure Hub and Spokes:
 AzurehubName=az-hub #Azure Hub Name
 Azurespoke1Name=az-spk1 #Azure Spoke 1 name
@@ -29,8 +29,6 @@ curl 10.0.12.4
 ping 10.0.11.4
 sudo hping3 10.0.11.4 -S -p 80 -c 10
 curl 10.0.11.4
-
-
 
 #Run tcptraceroute to check NVA instances intercepting the traffic via Load Balancer.
 # Run command below multiple times to see IP change on the first hop (NVAs).

@@ -8,7 +8,7 @@ virtualMachineSize=Standard_DS1_v2
 # NVA specific parameters
 nvasubnetname=nvasubnet
 nvasubnetprefix="10.0.10.160/28"
-nvaname=nva
+nvaname=lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
 asn_quagga=65004 # Set ASN
