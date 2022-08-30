@@ -22,6 +22,7 @@ nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o ts
 for nvaintname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
+ echo Configuring IPtables rules on $nvaintname
  scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
  --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./iptables.sh\"}" \

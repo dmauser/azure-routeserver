@@ -1,6 +1,5 @@
 #Parameters
 rg=lab-ars-nhip #Define your resource group
-location=centralus #Set location
 #Define parameters for Azure Hub and Spokes:
 AzurehubName=az-hub #Azure Hub Name
 Azurespoke1Name=az-spk1 #Azure Spoke 1 name
