@@ -7,7 +7,7 @@ virtualMachineSize=Standard_DS1_v2
 
 # NVA specific parameters
 nvasubnetname=nvasubnet
-nvasubnetprefix="10.0.10.160/28"
+nvasubnetprefix="10.0.0.160/28"
 nvaname=nva
 instances=2 #NVA instances
 #Specific NVA BGP settings
@@ -21,19 +21,19 @@ mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NS
 
 #Define parameters for Azure Hub and Spokes:
 AzurehubName=az-hub #Azure Hub Name
-AzurehubaddressSpacePrefix=10.0.10.0/24 #Azure Hub VNET address space
+AzurehubaddressSpacePrefix=10.0.0.0/24 #Azure Hub VNET address space
 AzurehubNamesubnetName=subnet1 #Azure Hub Subnet name where VM will be provisioned
-Azurehubsubnet1Prefix=10.0.10.0/27 #Azure Hub Subnet address prefix
-AzurehubgatewaySubnetPrefix=10.0.10.32/27 #Azure Hub Gateway Subnet address prefix
-AzureFirewallPrefix=10.0.10.64/26 #Azure Firewall Prefix
-AzurehubrssubnetPrefix=10.0.10.128/27 #Azure Hub Route Server subnet address prefix
-AzureHubBastionSubnet=10.0.10.192/26
+Azurehubsubnet1Prefix=10.0.0.0/27 #Azure Hub Subnet address prefix
+AzurehubgatewaySubnetPrefix=10.0.0.32/27 #Azure Hub Gateway Subnet address prefix
+AzureFirewallPrefix=10.0.0.64/26 #Azure Firewall Prefix
+AzurehubrssubnetPrefix=10.0.0.128/27 #Azure Hub Route Server subnet address prefix
+AzureHubBastionSubnet=10.0.0.192/26
 Azurespoke1Name=az-spk1 #Azure Spoke 1 name
-Azurespoke1AddressSpacePrefix=10.0.11.0/24 # Azure Spoke 1 VNET address space
-Azurespoke1Subnet1Prefix=10.0.11.0/27 # Azure Spoke 1 Subnet1 address prefix
+Azurespoke1AddressSpacePrefix=10.0.1.0/24 # Azure Spoke 1 VNET address space
+Azurespoke1Subnet1Prefix=10.0.1.0/27 # Azure Spoke 1 Subnet1 address prefix
 Azurespoke2Name=az-spk2 #Azure Spoke 1 name
-Azurespoke2AddressSpacePrefix=10.0.12.0/24 # Azure Spoke 1 VNET address space
-Azurespoke2Subnet1Prefix=10.0.12.0/27 # Azure Spoke 1 VNET address space
+Azurespoke2AddressSpacePrefix=10.0.2.0/24 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet1Prefix=10.0.2.0/27 # Azure Spoke 1 VNET address space
 
 #Parsing parameters above in Json format (do not change)
 JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
@@ -165,13 +165,13 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-spk1-lxvm1:
 # Run the following
-ping 10.0.12.4
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 # Check also from the opposite side. From az-spk2-lxvm2 to az-spk1-lxvm1.
-ping 10.0.11.4
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 #Enable IPTables NVA by allowing TCP port 80 (HTTP)
 echo 'Enable IPTables NVA by allowing TCP few ports 80, 53, 443, 22, 5201'
@@ -197,19 +197,19 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.12.4
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.11.4
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 # Review IPtables and start network captures running on both NVA1 and NVA2
 sudo iptables -L -v #review Forward IP table rules
-sudo tcpdump -n host 10.0.11.4 and host 10.0.12.4
+sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ********* Turn off one of the NVAs above and re-run the same tests:
 echo Check Spoke VMs Route tables:
@@ -222,15 +222,15 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.12.4
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.11.4
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 # ********* Bring back the NVA and make sure both are up and running:
 # OPTIONAL: Run the commands below if you want to revalidate connectivity:
@@ -271,15 +271,15 @@ echo $Azurespoke2Name-lxvm &&\
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.12.4
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.11.4
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 #Run tcptraceroute to check NVA instances intercepting the traffic via Load Balancer.
 
@@ -295,7 +295,7 @@ az network route-table route create --resource-group $rg --name default-to-Inter
 az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $AzurehubName-vnet --route-table $AzurehubName-rt-nva -o none
 
 #Misc
-sudo tcpdump -n host 10.0.11.4 and host 10.0.12.4
+sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 
 #Route Server config

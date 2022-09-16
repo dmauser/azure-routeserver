@@ -17,20 +17,20 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm reach az-spk2-lxvm?
 # Access Bastion or Serial console on az-spk1-lxvm:
 # Run the following
-ping 10.0.12.4 -c 5
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4 -c 5
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 # Check also from the opposite side. From az-spk2-lxvm to az-spk1-lxvm.
-ping 10.0.11.4 -c 5
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4 -c 5
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 # Run TCP traceroute to check BGP ECMP first hop NVA1 and NVA2 may change.
 # Run command below multiple times to see IP change on the first hop (NVAs).
 # from az-spk1-lxvm
-tcptraceroute 10.0.12.4 80
+tcptraceroute 10.0.2.4 80
 # from az-spk2-lxvm
-tcptraceroute 10.0.11.4 80
+tcptraceroute 10.0.1.4 80
 
 #Route Server specific settings:
 

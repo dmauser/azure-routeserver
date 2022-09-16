@@ -20,22 +20,22 @@ echo $Azurespoke2Name-lxvm &&\
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.12.4
-sudo hping3 10.0.12.4 -S -p 80 -c 10
-curl 10.0.12.4
+ping 10.0.2.4
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.11.4
-sudo hping3 10.0.11.4 -S -p 80 -c 10
-curl 10.0.11.4
+ping 10.0.1.4
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
 
 #Run tcptraceroute to check NVA instances intercepting the traffic via Load Balancer.
 # Run command below multiple times to see IP change on the first hop (NVAs).
 # from az-spk1-lxvm
-tcptraceroute 10.0.12.4 80
+tcptraceroute 10.0.2.4 80
 # from az-spk2-lxvm
-tcptraceroute 10.0.11.4 80
+tcptraceroute 10.0.1.4 80
 
 #Route Server specific settings:
 

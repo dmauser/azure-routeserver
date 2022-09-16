@@ -4,7 +4,7 @@ rg=lab-ars-nhip #Define your resource group
 
 # NVA specific parameters
 nvasubnetname=nvasubnet
-nvasubnetprefix="10.0.10.160/28"
+nvasubnetprefix="10.0.0.160/28"
 nvaname=lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
