@@ -2,6 +2,7 @@
 
 # Scenario
 
+## Network Topology
 
 ## Challenge 1 : Deploy lab and validate connectivity 
 
