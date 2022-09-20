@@ -39,9 +39,11 @@ tcptraceroute 10.0.1.4 80
 rsname=$(az network routeserver list --resource-group $rg --query [].name -o tsv)
 echo Route Server IPs: && \
 az network routeserver list --resource-group $rg --query '[].virtualRouterIps[]' -o tsv && \
+echo -e && \
 # RS BGP peerings
 echo Route Server BGP peerings: && \
 az network routeserver peering list --resource-group $rg --routeserver $rsname -o table && \
+echo -e && \
 # RS advertised routes to NVA1 and NVA2
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 do

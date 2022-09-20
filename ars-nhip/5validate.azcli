@@ -4,9 +4,13 @@
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
 
+# Review UDR
+# Revuew Existing NSG
+
 # Run deploy
-# Why do I neeed to make those changes on UDR and NSG to the Internet Breakout to work.
 
 # Re-run the commands again:
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
+
+# Why do I neeed to make those changes on UDR and NSG to the Internet Breakout to work?

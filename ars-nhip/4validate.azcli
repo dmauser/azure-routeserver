@@ -20,13 +20,13 @@ echo $Azurespoke2Name-lxvm &&\
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.2.4
+ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
-curl 10.0.2.4
+curl 10.0.2.4 
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.1.4
+ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
@@ -34,37 +34,41 @@ curl 10.0.1.4
 # Run command below multiple times to see IP change on the first hop (NVAs).
 # from az-spk1-lxvm
 tcptraceroute 10.0.2.4 80
+
 # from az-spk2-lxvm
 tcptraceroute 10.0.1.4 80
 
 #Route Server specific settings:
 
-#Route Server config
 # RS instance IPs
-az network routeserver list --resource-group $rg --query '{IPs:[].virtualRouterIps}' -o tsv
-# RS BGP Peerings
-az network routeserver peering list --resource-group $rg --routeserver $AzurehubName-routeserver -o table 
+rsname=$(az network routeserver list --resource-group $rg --query [].name -o tsv)
+echo Route Server IPs: && \
+az network routeserver list --resource-group $rg --query '[].virtualRouterIps[]' -o tsv && \
+echo -e && \
+# RS BGP peerings
+echo Route Server BGP peerings: && \
+az network routeserver peering list --resource-group $rg --routeserver $rsname -o table && \
+echo -e && \
 # RS advertised routes to NVA1 and NVA2
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 do
-  echo Advertised routes from RS $AzurehubName-routeserver to $nva
+  echo Advertised routes from RS $rsname to $nva
   az network routeserver peering list-advertised-routes \
    --resource-group $rg \
    --name $nva \
-   --routeserver $AzurehubName-routeserver \
+   --routeserver $rsname \
    --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
    --output table
   echo -e
-done
-
+done && \
 # RS learned routes
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 do
-  echo Learned routes on RS $AzurehubName-routeserver from $nva
+  echo Learned routes on RS $rsname from $nva
   az network routeserver peering list-learned-routes \
    --resource-group $rg \
    --name $nva \
-   --routeserver $AzurehubName-routeserver \
+   --routeserver $rsname \
    --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
    --output table
   echo -e
