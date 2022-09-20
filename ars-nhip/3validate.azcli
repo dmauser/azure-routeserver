@@ -43,7 +43,6 @@ ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
-
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following commands
 ping 10.0.1.4 -c 5
