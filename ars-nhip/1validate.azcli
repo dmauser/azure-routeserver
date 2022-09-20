@@ -28,3 +28,6 @@ sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
 # How about Hub-lxvm1
+ping 10.0.0.4
+sudo hping3 10.0.0.4 -S -p 80 -c 10
+curl 10.0.0.4
