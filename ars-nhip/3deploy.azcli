@@ -2,8 +2,8 @@
 rg=lab-ars-nhip #Define your resource group
 
 
-#Enable IPTables NVA by allowing TCP port 80 (HTTP)
-echo 'Enable IPTables NVA by allowing TCP few ports 80, 53, 443, 22, 5201'
+#Enable IPTables NVA by allowing TCP ports 80, 53, 443, 22, 5201
+echo 'Enable IPTables NVA by allowing TCP ports 80, 53, 443, 22, 5201'
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 for nvaintname in $nvanames
 do
@@ -12,6 +12,5 @@ do
  scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
  --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./iptables.sh\"}" \
- --force-update \
- --no-wait
+ --force-update
 done

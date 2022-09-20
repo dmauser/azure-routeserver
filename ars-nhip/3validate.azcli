@@ -3,7 +3,7 @@ https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script
 
 # Can az-spk1-lxvm reach az-spk2-lxvm?
 # Access Bastion or Serial console on az-spk1-lxvm:
-# Run the following
+# Run the following commands
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
@@ -11,6 +11,8 @@ curl 10.0.2.4
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
+
+# Note ping will fail because is not allowed by the rule.
 
 # Run TCP traceroute to check BGP ECMP first hop NVA1 and NVA2 may change.
 # Run command below multiple times to see IP change on the first hop (NVAs).
@@ -24,6 +26,7 @@ sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ********* Turn off one of the NVAs above and re-run the same tests:
+# Check the route table after one of the NVAs are offline
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
@@ -31,16 +34,19 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Na
 echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+# You should now
+
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1
-ping 10.0.2.4
+# Run the following commands on SPK2-lxvm1
+ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
+
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
-ping 10.0.1.4
+# Run the following commands
+ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
