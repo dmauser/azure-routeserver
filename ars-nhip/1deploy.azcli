@@ -40,7 +40,7 @@ JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$Azurehubaddre
 
 #Deploy base lab environment = Hub + VPN Gateway + VM and two Spokes with one VM on each.
 echo Deploying base lab: Hub with Spoke1 and 2, On-Premises and VPN using VNGs with BGP.
-echo "*** It will take around 30 minutes to finish the deployment ***"
+echo "*** It will take around 20 minutes to finish the deployment ***"
 az group create --name $rg --location $location --output none
 az deployment group create --name lab-$RANDOM --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
@@ -48,7 +48,7 @@ az deployment group create --name lab-$RANDOM --resource-group $rg \
 --output none \
 --no-wait
 
-sleep 30
+sleep 60
 echo Validating $AzurehubName-routeserver provisioning before deploying the NVA
 subid=$(az account list --query "[?isDefault == \`true\`].id" --all -o tsv)
 prState=''

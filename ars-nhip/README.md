@@ -8,6 +8,12 @@
 
 ### Deploy
 
+```bash
+wget -O 1deploy.sh https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/1deploy.azcli
+chmod +xr 1deploy.sh
+./1deploy.sh
+```
+
 ### Validate
 
 ## Challenge 2 : Enable Azure Route Server peering
