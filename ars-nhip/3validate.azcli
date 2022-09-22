@@ -25,7 +25,7 @@ tcptraceroute 10.0.1.4 80
 sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
-# ********* Turn off one of the NVAs above and re-run the same tests:
+# ====> Turn off one of the NVAs above and re-run the same tests:
 # Check the route table after one of the NVAs are offline
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
@@ -34,19 +34,31 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Na
 echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
-# You should now
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following commands on SPK2-lxvm1
-ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following commands
-ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
 # ===========> Bring back the NVA and make sure both are up and running.
+
+# Optional - review NVA BGP configuration
+# 1) Access either NVAs or both and run the following commands:
+# 2) Elevate shell as root by running
+sudo -s
+# Review BGP config by running both commands:
+vtysh 
+show running-config
+show ip bgp
+show ip bgp summary
+show ip bgp neighbors
+show ip bgp neighbors 10.0.0.132 received-routes
+show ip bgp neighbors 10.0.0.132 advertised-routes
+show ip bgp neighbors 10.0.0.133 received-routes
+show ip bgp neighbors 10.0.0.133 advertised-routes

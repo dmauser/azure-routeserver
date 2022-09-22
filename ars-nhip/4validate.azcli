@@ -12,7 +12,7 @@ echo Load Balancer IP: &&\
 echo Check Spoke VMs Route tables: &&\
 echo $Azurespoke1Name-lxvm &&\
  az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
- az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table
+ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table  &&\
 echo $Azurespoke2Name-lxvm &&\
  az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
  az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
@@ -20,13 +20,11 @@ echo $Azurespoke2Name-lxvm &&\
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
-ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4 
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
@@ -73,5 +71,20 @@ do
    --output table
   echo -e
 done
+
+# Optional - review NVA BGP configuration
+# 1) Access either NVAs or both and run the following commands:
+# 2) Elevate shell as root by running
+sudo -s
+# Review BGP config by running both commands:
+vtysh 
+show running-config
+show ip bgp
+show ip bgp summary
+show ip bgp neighbors
+show ip bgp neighbors 10.0.0.132 received-routes
+show ip bgp neighbors 10.0.0.132 advertised-routes
+show ip bgp neighbors 10.0.0.133 received-routes
+show ip bgp neighbors 10.0.0.133 advertised-routes
 
 
