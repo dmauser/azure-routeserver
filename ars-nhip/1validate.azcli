@@ -15,7 +15,7 @@ az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "i
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
-# Access Bastion or Serial console on az-SPK1-lxvm:
+# Use Bastion or Serial console to access az-SPK1-lxvm:
 # Run the following to SPK2-lxvm1
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
@@ -23,11 +23,43 @@ curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Run the following
-ping 10.0.1.4
+ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# How about Hub-lxvm1
-ping 10.0.0.4
+# How about connectivity to Hub-lxvm1 vm? Does it work?
+ping 10.0.0.4 -c 5
 sudo hping3 10.0.0.4 -S -p 80 -c 10
 curl 10.0.0.4
+
+# add UDR to NVA1 and re-validate connectivity
+
+#UDR for Hub traffic to Azure NVA (disables BGP propagation)
+## Create UDR + Disable BGP Propagation
+nvalb=$(az network lb show -g $rg --name $AzurehubName-lxnva-ilb --query "frontendIpConfigurations[].privateIpAddress" -o tsv)
+
+az network route-table create --name rt-spoke-to-nva --resource-group $rg --location $location --disable-bgp-route-propagation true
+## Default route to NVA
+az network route-table route create --resource-group $rg --name Default-to-NVA --route-table-name rt-spoke-to-nva  \
+--address-prefix 0.0.0.0/0 \
+--next-hop-type VirtualAppliance \
+--next-hop-ip-address $nvalb
+az network route-table route create --resource-group $rg --name PrivateTraffic-to-NVA --route-table-name rt-spoke-to-nva  \
+--address-prefix 0.0.0.0/0 \
+--next-hop-type VirtualAppliance \
+--next-hop-ip-address $nvalb
+
+
+# Use Bastion or Serial console to access az-SPK1-lxvm:
+# Run the following to SPK2-lxvm1
+ping 10.0.2.4 -c 5
+sudo hping3 10.0.2.4 -S -p 80 -c 10
+curl 10.0.2.4
+
+# Access Bastion or Serial console on az-SPK2-lxvm:
+# Run the following
+ping 10.0.1.4 -c 5
+sudo hping3 10.0.1.4 -S -p 80 -c 10
+curl 10.0.1.4
+
+# Remove UDRs before next
