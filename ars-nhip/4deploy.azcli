@@ -1,6 +1,10 @@
 # ====> Note ***: Before running next session make sure both NVAs are up and running
 #Parameters
 rg=lab-ars-nhip #Define your resource group
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+Azurespoke1Name=az-spk1 #Azure Spoke 1 name
+Azurespoke2Name=az-spk2 #Azure Spoke 1 name
 
 # NVA specific parameters
 nvasubnetname=nvasubnet
