@@ -45,7 +45,7 @@ az group create --name $rg --location $location --output none
 az deployment group create --name lab-$RANDOM --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
---output 
+--output none
 
 echo Validating $AzurehubName-routeserver provisioning before deploying the NVA
 subid=$(az account list --query "[?isDefault == \`true\`].id" --all -o tsv)
