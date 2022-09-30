@@ -46,4 +46,4 @@ curl 10.0.1.4
 # 1) Why does the connectivity with hping3 and curl work after you bring one of the NVA instances down?
 # 2) If you bring the other NVA back online again, what happens?
 
-# Important ===========> Bring back the NVA and make sure both are up and running.
+# Important ===========> Bring back the NVA and make sure both are up and running before you proceed to task 4.

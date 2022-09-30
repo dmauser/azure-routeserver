@@ -86,5 +86,3 @@ show ip bgp neighbors 10.0.0.132 received-routes
 show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
-
-
