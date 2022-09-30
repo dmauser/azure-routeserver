@@ -17,13 +17,13 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Use Bastion or Serial console to access az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1
+# Run the following commands:
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Run the following commands:
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
@@ -86,17 +86,17 @@ User      Active   0.0.0.0/0         VirtualAppliance  10.0.0.166
 User      Active   10.0.0.0/16       VirtualAppliance  10.0.0.166
 '
 # Use Bastion or Serial console to access az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1 to check connectivity:
+# Run the following commands:
 ping 10.0.2.4 -c 5 -O
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Run the following commands:
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# IMPORTANT: Dissassociate the UDRs from the Spoke 1 and 2 VM subnets before moving to the next step.
+# *** IMPORTANT *** Disassociate the UDRs from the Spoke 1 and 2 VM subnets before moving to the next step.
 az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke1Name-vnet --route-table "" --output none
 az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke2Name-vnet --route-table "" --output none

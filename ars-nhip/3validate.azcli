@@ -12,14 +12,10 @@ ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# Note ping will fail because is not allowed by the rule.
-
-# Run TCP traceroute to check BGP ECMP first hop NVA1 and NVA2 may change.
-# Run command below multiple times to see IP change on the first hop (NVAs).
-# from az-spk1-lxvm
-tcptraceroute 10.0.2.4 80
-# from az-spk2-lxvm
-tcptraceroute 10.0.1.4 80
+# Questions:
+# 1) Why do you see packet loss when you run hping3?
+# 2) Why does ping dont fail?
+# 3) Your curl command can work or fail if you re-run multiple times, why?
 
 # (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
 sudo iptables -L -v #review Forward IP table rules
@@ -46,7 +42,11 @@ curl 10.0.2.4
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# ===========> Bring back the NVA and make sure both are up and running.
+# Questions:
+# 1) Why does connectivity with hping3 and curl does not fail after you bring one of the NVA instances down?
+# 2) If you bring the other NVA back online again, what happens?
+
+# Important ===========> Bring back the NVA and make sure both are up and running.
 
 # Optional - review NVA BGP configuration
 # 1) Access either NVAs or both and run the following commands:
@@ -62,3 +62,5 @@ show ip bgp neighbors 10.0.0.132 received-routes
 show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
+
+# Important ===========> Bring back the NVA and make sure both are up and running.

@@ -2,13 +2,14 @@
 
 ## Intro
 
-The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://)
+The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://). However, to get there we need to go over the following important points:
 
-- Demonstrate basic connectivity between Spokes via Hub
-- Deploy Azure Route Server and use NVA to allow Spoke-to-Spoke connectivity without UDRs
+- Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
+- How to use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
 - Introduce stateful inspection via iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
-- Demonstrate the Azure Route Server Next Hop IP feature and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs doing stateful inspection.
+- Demonstrate the Azure Route Server Next Hop IP feature and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
+- Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs can go out to the Internet.
 
 ### Base network topology
 
@@ -17,16 +18,15 @@ The main objective of this lab is to demonstrate the benefit of the [Azure Route
 ### Lab components
 
 - There are three Virtual Networks (VNETs) where we have a Hub (10.0.0.0/24), Spoke1 (10.0.1.0/24) and Spoke2 (10.0.2.0/24).
-- Hub VNET has three virtual machines (VMs): az-hub-lxvm, az-spk1-lxvm and az-spk2-lxvm).
-- Azure Route Server (az-hub-routeserver) and that will be peer ti.
-
-### Considerations
+- Hub VNET has three virtual machines (VMs): az-hub-lxvm (10.0.0.4), az-spk1-lxvm (10.0.1.4), and az-spk2-lxvm.
+- Azure Route Server (az-hub-routeserver) for routing propagation between Linux NVAs and VNETs.
+- Azure Load Banacer (az-hub-nvailb) 
 
 ### Task 1: Deploy base lab and test connectivity
 
 #### Deploy
 
-Use the following script to deploy the base lab:
+Use the following script to deploy the base lab. You can open [Azure Cloud Shell (Bash)](https://shell.azure.com) and run the following commands build to the entire lab:
 
 ```bash
 wget -O 1deploy.sh https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/1deploy.azcli
@@ -34,7 +34,9 @@ chmod +xr 1deploy.sh
 ./1deploy.sh
 ```
 
-Note: Before running the script, you can change the parameters based on your requirements. Otherwise, the values defined below are going to be used:
+An alternative for Azure Cloud Shell is to install AZCLI for your Linux distribution or get Linux for Windows via WSL2. See more information in [Set up a WSL development environment](https://docs.microsoft.com/en-us/windows/wsl/setup/environment)
+
+**Note:** Before running the script, you can change the parameters based on your requirements. Otherwise, what you see defined below is going to be the default settings used:
 
 ```Bash
 #Parameters
@@ -49,6 +51,9 @@ virtualMachineSize=Standard_DS1_v2 #Set VM size
 
 This step aims to validate the connectivity between both VMs in Spoke1 and Spoke2 VNETs.
 It will demonstrate the connectivity using UDR via Load Balancer with both NVAs in the Hub.
+
+Reference diagram:
+![validaiton1](./media/validation1.png)
 
 ```Bash
 #Parameters
@@ -70,13 +75,13 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Use Bastion or Serial console to access az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1
+# Run the following commands:
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Run the following commands:
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
@@ -139,18 +144,18 @@ User      Active   0.0.0.0/0         VirtualAppliance  10.0.0.166
 User      Active   10.0.0.0/16       VirtualAppliance  10.0.0.166
 '
 # Use Bastion or Serial console to access az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1 to check connectivity:
+# Run the following commands:
 ping 10.0.2.4 -c 5 -O
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Run the following commands:
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# IMPORTANT: Dissassociate the UDRs from the Spoke 1 and 2 VM subnets before moving to the next step.
+# *** IMPORTANT *** Disassociate the UDRs from the Spoke 1 and 2 VM subnets before moving to the next step.
 az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke1Name-vnet --route-table "" --output none
 az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke2Name-vnet --route-table "" --output none
 ```
@@ -209,6 +214,12 @@ done
 ```
 
 #### Validate connectivity between Spoke1 and Spoke2 VMs
+
+Let's validate the connectivity between Spoke1 and Spoke2 VMs by only using Azure Route Server after NVAs got configured to advertise networks 10.0.0.0/16 and 0.0.0.0/0 (the default route is for Internet Breakout, and more details on that at Task 5).
+
+Reference diagram:
+![validaiton2](./media/validation2.png)
+
 
 ```Bash
 #Parameters
@@ -342,14 +353,10 @@ ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# Note ping will fail because is not allowed by the rule.
-
-# Run TCP traceroute to check BGP ECMP first hop NVA1 and NVA2 may change.
-# Run command below multiple times to see IP change on the first hop (NVAs).
-# from az-spk1-lxvm
-tcptraceroute 10.0.2.4 80
-# from az-spk2-lxvm
-tcptraceroute 10.0.1.4 80
+# Questions:
+# 1) Why do you see packet loss when you run hping3?
+# 2) Why does ping dont fail?
+# 3) Your curl command can work or fail if you re-run multiple times, why?
 
 # (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
 sudo iptables -L -v #review Forward IP table rules
@@ -376,7 +383,11 @@ curl 10.0.2.4
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
-# ===========> Bring back the NVA and make sure both are up and running.
+# Questions:
+# 1) Why does connectivity with hping3 and curl does not fail after you bring one of the NVA instances down?
+# 2) If you bring the other NVA back online again, what happens?
+
+# Important ===========> Bring back the NVA and make sure both are up and running.
 
 # Optional - review NVA BGP configuration
 # 1) Access either NVAs or both and run the following commands:
@@ -392,10 +403,14 @@ show ip bgp neighbors 10.0.0.132 received-routes
 show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
+
+# Important ===========> Bring back the NVA and make sure both are up and running.
 ```
 
 ### Task 4: enabling Next Hop IP feature
 
-To resolve the asymmetric issue we will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next hop. Azure Route Server will honor that attribute change and all the East/West trafffic will not use  
+To resolve the asymmetric issue, we will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next ho BGP attribute using a route-map configuration on both NVAs. 
+
+Azure Route Server will honor that attribute, and all the East/West trafffic will not use Azure Load Balancer
 
 #### Deploy
