@@ -34,6 +34,17 @@ chmod +xr 1deploy.sh
 ./1deploy.sh
 ```
 
+Note: Before running the script, you can change the parameters based on your requirements. Otherwise, the values defined below are going to be used:
+
+```Bash
+#Parameters
+rg=lab-ars-nhip #Define your resource group
+location=eastus2 #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+```
+
 #### Validate transit between Spoke1 and Spoke2 VMs and setup UDRs
 
 This step aims to validate the connectivity between both VMs in Spoke1 and Spoke2 VNETs.
@@ -382,3 +393,9 @@ show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
 ```
+
+### Task 4: enabling Next Hop IP feature
+
+To resolve the asymmetric issue we will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next hop. Azure Route Server will honor that attribute change and all the East/West trafffic will not use  
+
+#### Deploy
