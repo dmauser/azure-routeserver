@@ -1,0 +1,9 @@
+{
+    "grammarly.selectors": [
+        {
+            "language": "azcli",
+            "scheme": "file",
+            "pattern": "ars-nhip/1validate.azcli"
+        }
+    ]
+}
