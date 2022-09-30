@@ -43,24 +43,7 @@ sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
 # Questions:
-# 1) Why does connectivity with hping3 and curl does not fail after you bring one of the NVA instances down?
+# 1) Why does the connectivity with hping3 and curl work after you bring one of the NVA instances down?
 # 2) If you bring the other NVA back online again, what happens?
-
-# Important ===========> Bring back the NVA and make sure both are up and running.
-
-# Optional - review NVA BGP configuration
-# 1) Access either NVAs or both and run the following commands:
-# 2) Elevate shell as root by running
-sudo -s
-# Review BGP config by running both commands:
-vtysh 
-show running-config
-show ip bgp
-show ip bgp summary
-show ip bgp neighbors
-show ip bgp neighbors 10.0.0.132 received-routes
-show ip bgp neighbors 10.0.0.132 advertised-routes
-show ip bgp neighbors 10.0.0.133 received-routes
-show ip bgp neighbors 10.0.0.133 advertised-routes
 
 # Important ===========> Bring back the NVA and make sure both are up and running.

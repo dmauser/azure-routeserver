@@ -2,12 +2,12 @@
 
 ## Intro
 
-The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://). However, to get there we need to go over the following important points:
+The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://). However, to get there, we need to go over the following important points:
 
 - Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
 - How to use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
-- Introduce stateful inspection via iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
+- Introduce stateful inspection via Iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
 - Demonstrate the Azure Route Server Next Hop IP feature and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
 - Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs can go out to the Internet.
 
@@ -162,9 +162,9 @@ az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke2Name-vne
 
 ### Task 2: Enable Azure Route Server BGP peering with NVAs
 
-#### Deploy
+#### Adding Azure Route Server
 
-In the steps below, the script will build BGP peerings between both NVAs (az-hub-lxnva1 and az-hub-lxnva1) with Azure Route Server instances. UDRs have been removed from the previous step and the goal is to show Spoke1 and Spoke2 transit via NVAs in the Hub VNET.
+In the steps below, the script will build BGP peerings between both NVAs (az-hub-lxnva1 and az-hub-lxnva1) with Azure Route Server instances. UDRs have been removed from the previous step, and the goal is to show Spoke1 and Spoke2 transit via NVAs in the Hub VNET.
 
 ```Bash
 #Parameters
@@ -313,34 +313,38 @@ show ip bgp neighbors 10.0.0.133 advertised-routes
 
 In this section, both NVAs and how that will affect transit between Spoke 1 and Spoke 2 VMs.
 
-#### Deploy
-
-Enabling IPtables:
+#### Enabling Iptables
 
 ```Bash
 #Parameters
 rg=lab-ars-nhip #Define your resource group
 
-#Enable IPTables on both NVAs by allowing ICMP and TCP ports 80, 53, 443, 22, and 5201
-echo 'Enable IPTables NVA by allowing ICMP, TCP ports 80, 53, 443, 22, and 5201'
+#Enable Iptables on both NVAs by allowing ICMP and TCP ports 80, 53, 443, 22, and 5201
+echo 'Enable Iptables NVA by allowing ICMP, TCP ports 80, 53, 443, 22, and 5201'
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 for nvaintname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
- echo Enabling IPtables rules on $nvaintname
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh"
+ echo Enabling Iptables rules on $nvaintname
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/Iptables.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./iptables.sh\"}" \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./Iptables.sh\"}" \
  --force-update \
  --output none
 done
 ```
 
-#### Validate connectivity after IPtables enabled
+#### Validate connectivity after Iptables enabled
+
+There are some unexpected behaviors after enabling Iptables. The diagram below illustrates some of them:
+
+![validation3](./media/validation3.png)
+
+Please, follow the procedure below and answer some questions.
 
 ```Bash
-# Review the IPtables rules enforced by using the following link:
-https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh
+# Review the Iptables rules enforced by using the following link:
+https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/Iptables.sh
 
 # Can az-spk1-lxvm reach az-spk2-lxvm?
 # Access Bastion or Serial console on az-spk1-lxvm:
@@ -358,8 +362,8 @@ curl 10.0.1.4
 # 2) Why does ping dont fail?
 # 3) Your curl command can work or fail if you re-run multiple times, why?
 
-# (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
-sudo iptables -L -v #review Forward IP table rules
+# (OPTIONAL) Review Iptables and start network captures running on both NVA1 and NVA2
+sudo Iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ====> Turn off one of the NVAs above and re-run the same tests:
@@ -384,33 +388,22 @@ sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
 # Questions:
-# 1) Why does connectivity with hping3 and curl does not fail after you bring one of the NVA instances down?
+# 1) Why does the connectivity with hping3 and curl work after you bring one of the NVA instances down?
 # 2) If you bring the other NVA back online again, what happens?
-
-# Important ===========> Bring back the NVA and make sure both are up and running.
-
-# Optional - review NVA BGP configuration
-# 1) Access either NVAs or both and run the following commands:
-# 2) Elevate shell as root by running
-sudo -s
-# Review BGP config by running both commands:
-vtysh 
-show running-config
-show ip bgp
-show ip bgp summary
-show ip bgp neighbors
-show ip bgp neighbors 10.0.0.132 received-routes
-show ip bgp neighbors 10.0.0.132 advertised-routes
-show ip bgp neighbors 10.0.0.133 received-routes
-show ip bgp neighbors 10.0.0.133 advertised-routes
 
 # Important ===========> Bring back the NVA and make sure both are up and running.
 ```
 
-### Task 4: enabling Next Hop IP feature
+### Task 4: Enabling the custom IP Next Hop feature
 
-To resolve the asymmetric issue, we will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next ho BGP attribute using a route-map configuration on both NVAs. 
+We will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next. Both NVAs have a route-map configured with the command [set ip next-hop](https://www.nongnu.org/quagga/docs/docs-multi/Route-Map-Set-Command.html), and when interacting via BGP with Azure Route Server, that passes that information to the Virtual Network, finally committing to the effective routes of the Spoke 1 and 2 VMS.
 
-Azure Route Server will honor that attribute, and all the East/West trafffic will not use Azure Load Balancer
+#### Configuring route-map _set ip next-hop_ on both NVAs
 
-#### Deploy
+```Bash
+```
+
+#### Connectivity revalidation after enabling _set ip next-hop_
+
+```Bash
+```
