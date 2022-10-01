@@ -5,7 +5,9 @@ nc -v -z 8.8.8.8 53
 curl ifconfig.io
 
 # Review UDR
-# Revuew Existing NSG
+az network route-table show --name $AzurehubName-rt-nva --resource-group $rg --query routes -o table
+# Review Existing NSG
+az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'allow-nva-inetbreakout' 
 
 # Run deploy
 

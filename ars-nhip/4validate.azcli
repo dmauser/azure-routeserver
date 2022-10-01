@@ -86,3 +86,7 @@ show ip bgp neighbors 10.0.0.132 received-routes
 show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
+
+# Questions:
+# 1) Does spoke 1 and 2 know are communicating correctly after next hop ip pointing to the Load Balancer?
+# 2) If you bring the other NVA back online again, what happens?

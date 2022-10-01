@@ -4,6 +4,11 @@
             "language": "azcli",
             "scheme": "file",
             "pattern": "ars-nhip/1validate.azcli"
+        },
+        {
+            "language": "azcli",
+            "scheme": "file",
+            "pattern": "ars-nhip/3validate.azcli"
         }
     ]
 }

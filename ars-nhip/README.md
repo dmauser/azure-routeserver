@@ -8,7 +8,7 @@ Content
 The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://). However, to get there, we need to go over the following important points:
 
 - Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
-- How to use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
+- Use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
 - Introduce stateful inspection via Iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
 - Demonstrate the Azure Route Server Next Hop IP feature and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
@@ -23,7 +23,8 @@ The main objective of this lab is to demonstrate the benefit of the [Azure Route
 - There are three Virtual Networks (VNETs) where we have a Hub (10.0.0.0/24), Spoke1 (10.0.1.0/24) and Spoke2 (10.0.2.0/24).
 - Hub VNET has three virtual machines (VMs): az-hub-lxvm (10.0.0.4), az-spk1-lxvm (10.0.1.4), and az-spk2-lxvm.
 - Azure Route Server (az-hub-routeserver) for routing propagation between Linux NVAs and VNETs.
-- Azure Load Banacer (az-hub-nvailb) 
+- Azure Load Banacer (az-hub-nvailb) with two NVAs as backends.
+- Both NVAs are running Ubuntu 18.04 and BGP with Quagga. Both have single network interface cards to handle private traffic (East/West) and Internet (North/South).
 
 ## Task 1: Deploy base lab and test connectivity
 
@@ -316,6 +317,9 @@ show ip bgp neighbors 10.0.0.133 advertised-routes
 
 In this section, both NVAs and how that will affect transit between Spoke 1 and Spoke 2 VMs.
 
+Reference diagram:
+![validaiton3](./media/validation3.png)
+
 ### Enabling Iptables
 
 ```Bash
@@ -346,8 +350,8 @@ There are some unexpected behaviors after enabling Iptables. The diagram below i
 Please, follow the procedure below and answer some questions.
 
 ```Bash
-# Review the Iptables rules enforced by using the following link:
-https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/Iptables.sh
+# Review the IPtables rules enforced by using the following link:
+https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh
 
 # Can az-spk1-lxvm reach az-spk2-lxvm?
 # Access Bastion or Serial console on az-spk1-lxvm:
@@ -362,11 +366,15 @@ curl 10.0.1.4
 
 # Questions:
 # 1) Why do you see packet loss when you run hping3?
-# 2) Why does ping dont fail?
-# 3) Your curl command can work or fail if you re-run multiple times, why?
+# 2) Why does ping not fail?
+# 3) Your curl command can work or fail if you re-run them multiple times; why?
+# 4) How about Internet Breakout? Would it fail too?
+# Internet breakout does not work here because there are requirements covered on task 5.
+# Keep in mind that the asymmetric issue only affects inspection for private traffic (East/West).
+# North/South traffic does not get affected. You can go straight to Task 5 and validate that.
 
-# (OPTIONAL) Review Iptables and start network captures running on both NVA1 and NVA2
-sudo Iptables -L -v #review Forward IP table rules
+# (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
+sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ====> Turn off one of the NVAs above and re-run the same tests:
@@ -392,7 +400,7 @@ curl 10.0.1.4
 
 # Questions:
 # 1) Why does the connectivity with hping3 and curl work after you bring one of the NVA instances down?
-# 2) If you bring the other NVA back online again, what happens?
+# 2) What happens if you bring back online the other NVA?
 
 # Important ===========> Bring back the NVA and make sure both are up and running before you proceed to task 4.
 ```
@@ -401,7 +409,10 @@ curl 10.0.1.4
 
 We will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next. Both NVAs have a route-map configured with the command [set ip next-hop](https://www.nongnu.org/quagga/docs/docs-multi/Route-Map-Set-Command.html), and when interacting via BGP with Azure Route Server, that passes that information to the Virtual Network, finally committing to the effective routes of the Spoke 1 and 2 VMS.
 
-### Configuring route-map _set ip next-hop_ on both NVAs
+Reference diagram:
+![validaiton4](./media/validation4.png)
+
+### Configuring route-map _set ip next-hop_ in both NVAs
 
 ```Bash
 # ====> Note ***: Before running next session make sure both NVAs are up and running
@@ -533,3 +544,80 @@ show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
 ```
+
+## Task 5: (Bonus) Configuring Internet Breakout
+
+This section is a bonus and is not necessarily related to topics discussed in the previous sections. However, it is an important step to configure NVAs properly for Internet breakout with Azure Route Server because the default route is propagated to the VNET and gets reinjected on the NVA interface again. That is even more important for our scenario because both NVAs use single network interface cards (NICs). Therefore, the goal is to understand Internet breakout from the NVAs themselves and other VMs using the NVAs for Internet breakout. Two essential Azure networking feature core to make it work are UDR and NSG.
+
+Reference diagram:
+![validaiton5](./media/validation5.png)
+
+### Validate Internet Breakout
+
+Run the following commands on spk1-lxvm or spk2-lxvm:
+
+```Bash
+nc -v -z 8.8.8.8 53
+curl ifconfig.io
+sudo hping3 www.bing.com -S -p 80 -c 10
+```
+
+### Review UDR and deploy NSG
+
+During the NVAs the provisioning a UDR named az-hub-rt-nva got associated with NVAsubnet.
+Review the UDR  az-hub-rt-nva setting by running:
+
+```Bash
+az network route-table show --name $AzurehubName-rt-nva --resource-group $rg --query routes -o table
+```
+
+Questions:
+
+1) Why do we need that UDR for both NVAs breakout to the Internet?
+2) Does Internet Breakout work when you run the commands below inside both or either one of the NVAs?
+3) Even with the UDR in place, why is the Internet breakout not working from Spoke VMs? But it works from the NVAs.
+
+### Add the following security rule to the az-hub-nva-nsg NSG to allow Internet Breakout from Spoke VMs.
+
+```Bash
+#Parameters
+rg=lab-ars-nhip #Define your resource group
+location=$(az group show -n $rg --query location -o tsv)
+nvasubnetname=nvasubnet
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+
+#NSG and UDR Internet Breakout NVA Internet
+echo Adjusting NSG for Internet Breakout
+az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg \
+ -n 'allow-nva-inetbreakout' \
+ --direction Inbound \
+ --priority 200 \
+ --source-address-prefixes VirtualNetwork \
+ --source-port-ranges '*' \
+ --destination-address-prefixes '*' \
+ --destination-port-ranges "*" \
+ --access Allow --protocol "*" \
+ --description "Allows NVA single NIC use Internet Breakout" \
+ --output none
+az network vnet subnet update --name nvasubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg
+```
+
+### Re-validate Internet Breakout from Spoke VNET
+
+Run the following commands on spk1-lxvm or spk2-lxvm:
+
+```Bash
+nc -v -z 8.8.8.8 53
+curl ifconfig.io
+sudo hping3 www.bing.com -S -p 80 -c 10
+```
+
+Review content of the az-hub-nva-nsg NSG and rules in place:
+
+```Bash
+az network nsg show -g $rg --name $AzurehubName-nva-nsg --query securityRules -o table
+```
+
+Review the security rule allow-nva-inetbreakout, and why do we need destination as set as ANY?
