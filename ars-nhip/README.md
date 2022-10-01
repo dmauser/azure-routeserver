@@ -33,7 +33,7 @@ The main objective of this lab is to demonstrate the benefit of the [Azure Route
 Use the following script to deploy the base lab. You can open [Azure Cloud Shell (Bash)](https://shell.azure.com) and run the following commands build to the entire lab:
 
 ```bash
-wget -O 1deploy.sh https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/1deploy.azcli
+wget -O 1deploy.sh https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/1deploy.azcli
 chmod +xr 1deploy.sh
 ./1deploy.sh
 ```
