@@ -338,9 +338,6 @@ show ip bgp neighbors 10.0.0.133 advertised-routes
 
 In this section, both NVAs and how that will affect transit between Spoke 1 and Spoke 2 VMs.
 
-Reference diagram:
-![validaiton3](./media/validation3.png)
-
 ### Enabling Iptables
 
 ```Bash
