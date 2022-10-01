@@ -2,6 +2,27 @@
 
 Content
 - [Intro](#intro)
+- [Base network topology](#base-network-topology)
+- [Lab components](#lab-components)
+- [Task 1: Deploy base lab and test connectivity](#task-1-deploy-base-lab-and-test-connectivity)
+  - [Deploy base lab](#deploy-base-lab)
+  - [Validate transit between Spoke1 and Spoke2 VMs and setup UDRs](#validate-transit-between-spoke1-and-spoke2-vms-and-setup-udrs)
+- [Task 2: Enable Azure Route Server BGP peering with NVAs](#task-2-enable-azure-route-server-bgp-peering-with-nvas)
+  - [Adding Azure Route Server](#adding-azure-route-server)
+  - [Validate connectivity between Spoke1 and Spoke2 VMs](#validate-connectivity-between-spoke1-and-spoke2-vms)
+- [Task 3: enabling traffic inspection on the NVAs](#task-3-enabling-traffic-inspection-on-the-nvas)
+  - [Enabling Iptables](#enabling-iptables)
+  - [Validate connectivity after Iptables enabled](#validate-connectivity-after-iptables-enabled)
+- [Task 4: Enabling the custom IP Next Hop feature](#task-4-enabling-the-custom-ip-next-hop-feature)
+  - [Configuring route-map set ip next-hop in both NVAs](#configuring-route-map-set-ip-next-hop-in-both-nvas)
+  - [Connectivity revalidation after enabling set ip next-hop](#connectivity-revalidation-after-enabling-set-ip-next-hop)
+- [Task 5: (Bonus) Configuring Internet Breakout](#task-5-bonus-configuring-internet-breakout)
+ - [Validate Internet Breakout](#validate-internet-breakout)
+ - [Review UDR and update NSG security rule](#review-udr-and-deploy-nsg)
+ - [Re-validate Internet Breakout from Spoke VNET](#re-validate-internet-breakout-from-spoke-vnet)
+- [Closing](#closing)
+
+
 
 ## Intro
 
