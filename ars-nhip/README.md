@@ -620,4 +620,8 @@ Review content of the az-hub-nva-nsg NSG and rules in place:
 az network nsg show -g $rg --name $AzurehubName-nva-nsg --query securityRules -o table
 ```
 
-Review the security rule allow-nva-inetbreakout, and why do we need destination as set as ANY?
+Review the security rule allow-nva-inetbreakout, and why do we need a destination as set as ANY?
+
+## Closing
+
+In this Lab, you have learned how to use Azure Route Server to facilitate East/West traffic between Spoke1 and Spoke2 without using UDRs. You also enabled traffic inspection and found how that can impact traffic between Spokes. We instructed the Azure Route Server Next IP Hop to steer the same traffic over the Internal Load Balancer and at the same time, mitigate the asymmetric routing issues. Finally, you learned how to properly configure your NVA for Internet breakout by adding a UDR on the NVA's subnet, forcing traffic to the Internet service tags, and adjusting NSG to ensure Spoke VMs can use NVA for Internet access.
