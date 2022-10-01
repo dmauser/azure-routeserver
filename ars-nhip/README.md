@@ -1,6 +1,6 @@
 # Azure Route Server Next IP Hop support
 
-Content
+**Content**
 - [Intro](#intro)
 - [Base network topology](#base-network-topology)
 - [Lab components](#lab-components)
