@@ -1,4 +1,4 @@
-# Azure Route Server Next Hop IP lab
+# Azure Route Server Next IP Hop support
 
 Content
 - [Intro](#intro)
