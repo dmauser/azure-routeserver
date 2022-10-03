@@ -1,4 +1,4 @@
-# Azure Route Server Next IP Hop support
+# Lab: High Available NVAs with Azure Route Server
 
 **Content**
 - [Intro](#intro)
@@ -26,13 +26,13 @@
 
 ## Intro
 
-The main objective of this lab is to demonstrate the benefit of the [Azure Route Server next hop IP feature](https://). However, to get there, we need to go over the following important points:
+The main objective of this lab is to demonstrate the benefit of the . However, to get there, we need to go over the following important points:
 
 - Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
 - Use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
 - Introduce stateful inspection via Iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
-- Demonstrate the Azure Route Server Next Hop IP feature and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
+- Demonstrate the [Azure Route Server next hop IP feature](https://https://learn.microsoft.com/en-us/azure/route-server/next-hop-ip) and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
 - Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs can go out to the Internet.
 
 ## Base network topology
