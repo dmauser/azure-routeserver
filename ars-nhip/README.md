@@ -11,7 +11,7 @@
 - [Task 2: Enable Azure Route Server BGP peering with NVAs](#task-2-enable-azure-route-server-bgp-peering-with-nvas)
   - [Adding Azure Route Server](#adding-azure-route-server)
   - [Validate connectivity between Spoke1 and Spoke2 VMs](#validate-connectivity-between-spoke1-and-spoke2-vms)
-- [Task 3: enabling traffic inspection on the NVAs](#task-3-enabling-traffic-inspection-on-the-nvas)
+- [Task 3: Enabling traffic inspection on the NVAs](#task-3-enabling-traffic-inspection-on-the-nvas)
   - [Enabling Iptables](#enabling-iptables)
   - [Validate connectivity after Iptables enabled](#validate-connectivity-after-iptables-enabled)
 - [Task 4: Enabling the custom IP Next Hop feature](#task-4-enabling-the-custom-ip-next-hop-feature)
@@ -333,7 +333,7 @@ show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
 ```
 
-## Task 3: enabling traffic inspection on the NVAs
+## Task 3: Enabling traffic inspection on the NVAs
 
 In this section, both NVAs and how that will affect transit between Spoke 1 and Spoke 2 VMs.
 
