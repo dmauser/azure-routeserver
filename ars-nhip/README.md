@@ -25,7 +25,7 @@
 
 ## Intro
 
-The main objective of this lab is to demonstrate the benefit of the . However, to get there, we need to go over the following important points:
+The main objective of this lab is to demonstrate traffic going over high available NVAs leveraging Azure Route Server. During the lab, you are going to explore the following:
 
 - Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
 - Use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
