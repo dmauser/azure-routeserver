@@ -32,7 +32,7 @@ The main objective of this lab is to demonstrate traffic going over high availab
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
 - Introduce stateful inspection via Iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
 - Demonstrate the [Azure Route Server next hop IP feature](https://https://learn.microsoft.com/en-us/azure/route-server/next-hop-ip) and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
-- Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs can go out to the Internet.
+- Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs and Spoke VMs can go out to the Internet.
 
 ## Base network topology
 
