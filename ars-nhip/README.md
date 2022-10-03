@@ -1,6 +1,7 @@
 # Lab: High Available NVAs with Azure Route Server
 
 **Content**
+
 - [Intro](#intro)
 - [Base network topology](#base-network-topology)
 - [Lab components](#lab-components)
@@ -21,8 +22,6 @@
  - [Review UDR and update NSG security rule](#review-udr-and-deploy-nsg)
  - [Re-validate Internet Breakout from Spoke VNET](#re-validate-internet-breakout-from-spoke-vnet)
 - [Closing](#closing)
-
-
 
 ## Intro
 
