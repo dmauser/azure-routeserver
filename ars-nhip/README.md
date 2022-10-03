@@ -16,11 +16,11 @@
   - [Validate connectivity after Iptables enabled](#validate-connectivity-after-iptables-enabled)
 - [Task 4: Enabling the custom IP Next Hop feature](#task-4-enabling-the-custom-ip-next-hop-feature)
   - [Configuring route-map set IP next-hop in both NVAs](#configuring-route-map-set-ip-next-hop-in-both-nvas)
-  - [Connectivity revalidation after set IP next-hop](#connectivity-revalidation-after-enabling-set-ip-next-hop)
+  - [Connectivity revalidation after set IP next-hop](#connectivity-revalidation-after-set-ip-next-hop)
 - [Task 5: (Bonus) Configuring Internet Breakout](#task-5-bonus-configuring-internet-breakout)
- - [Validate Internet Breakout](#validate-internet-breakout)
- - [Review UDR and update NSG security rule](#review-udr-and-deploy-nsg)
- - [Re-validate Internet Breakout from Spoke VNET](#re-validate-internet-breakout-from-spoke-vnet)
+  - [Validate Internet Breakout](#validate-internet-breakout)
+  - [Review UDR and update NSG security rule](#review-udr-and-deploy-nsg)
+  - [Re-validate Internet Breakout from Spoke VNET](#re-validate-internet-breakout-from-spoke-vnet)
 - [Closing](#closing)
 
 ## Intro
