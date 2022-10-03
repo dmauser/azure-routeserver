@@ -15,8 +15,8 @@
   - [Enabling Iptables](#enabling-iptables)
   - [Validate connectivity after Iptables enabled](#validate-connectivity-after-iptables-enabled)
 - [Task 4: Enabling the custom IP Next Hop feature](#task-4-enabling-the-custom-ip-next-hop-feature)
-  - [Configuring route-map set ip next-hop in both NVAs](#configuring-route-map-set-ip-next-hop-in-both-nvas)
-  - [Connectivity revalidation after enabling set ip next-hop](#connectivity-revalidation-after-enabling-set-ip-next-hop)
+  - [Configuring route-map set IP next-hop in both NVAs](#configuring-route-map-set-ip-next-hop-in-both-nvas)
+  - [Connectivity revalidation after set IP next-hop](#connectivity-revalidation-after-enabling-set-ip-next-hop)
 - [Task 5: (Bonus) Configuring Internet Breakout](#task-5-bonus-configuring-internet-breakout)
  - [Validate Internet Breakout](#validate-internet-breakout)
  - [Review UDR and update NSG security rule](#review-udr-and-deploy-nsg)
@@ -469,7 +469,7 @@ do
 done
 ```
 
-### Connectivity revalidation after enabling _set ip next-hop_
+### Connectivity revalidation after _set ip next-hop_
 
 ```Bash
 #Parameters
