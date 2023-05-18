@@ -9,10 +9,10 @@ location=$(az group show -n $rg --query location -o tsv)
 # Check Spoke VMs route tables
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
 echo $Azurespoke2Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
@@ -37,7 +37,7 @@ curl 10.0.0.4
 
 #UDR for Hub traffic to Azure NVA (disables BGP propagation)
 ## Create UDR + Disable BGP Propagation
-nvalb=$(az network lb show -g $rg --name $AzurehubName-lxnva-ilb --query "frontendIpConfigurations[].privateIpAddress" -o tsv)
+nvalb=$(az network lb show -g $rg --name $AzurehubName-lxnva-ilb --query "frontendIpConfigurations[].privateIPAddress" -o tsv)
 ## Create UDR
 az network route-table create --name rt-spoke-to-nva --resource-group $rg --location $location --disable-bgp-route-propagation true --output none
 ## Default and private traffic to the NVA Load Balancer:
@@ -58,10 +58,10 @@ az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke2Name-vne
 # Check Spoke VMs route tables (it may take few sconds to take effect the UDR changes made, re-run commands below until see expected route tables)
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
 echo $Azurespoke2Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Expected output:

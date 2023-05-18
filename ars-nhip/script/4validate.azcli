@@ -8,13 +8,13 @@ Azurespoke2Name=az-spk2 #Azure Spoke 1 name
 
 # Check Spoke VMs route tables
 echo Load Balancer IP: &&\
- az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIpConfigurations[0].privateIpAddress" -o tsv &&\
+ az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIpConfigurations[0].privateIPAddress" -o tsv &&\
 echo Check Spoke VMs Route tables: &&\
 echo $Azurespoke1Name-lxvm &&\
- az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+ az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
  az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table  &&\
 echo $Azurespoke2Name-lxvm &&\
- az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIpAddress" -o tsv &&\
+ az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
  az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
