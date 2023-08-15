@@ -1,0 +1,59 @@
+#Parameters
+rg=lab-ars-sdwan2 #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+#Variables
+mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=az-hub #Azure Hub Name
+AzurehubaddressSpacePrefix=10.0.0.0/24 #Azure Hub VNET address space
+AzurehubNamesubnetName=subnet1 #Azure Hub Subnet name where VM will be provisioned
+Azurehubsubnet1Prefix=10.0.0.0/27 #Azure Hub Subnet address prefix
+AzurehubgatewaySubnetPrefix=10.0.0.32/27 #Azure Hub Gateway Subnet address prefix
+AzureFirewallPrefix=10.0.0.64/26 #Azure Firewall Prefix
+AzurehubrssubnetPrefix=10.0.0.128/27 #Azure Hub Route Server subnet address prefix
+AzureHubBastionSubnet=10.0.0.192/26
+Azurespoke1Name=az-spk1 #Azure Spoke 1 name
+Azurespoke1AddressSpacePrefix=10.0.1.0/24 # Azure Spoke 1 VNET address space
+Azurespoke1Subnet1Prefix=10.0.1.0/27 # Azure Spoke 1 Subnet1 address prefix
+Azurespoke2Name=az-spk2 #Azure Spoke 1 name
+Azurespoke2AddressSpacePrefix=10.0.2.0/24 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet1Prefix=10.0.2.0/27 # Azure Spoke 1 VNET address space
+
+#Parsing parameters above in Json format (do not change)
+JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
+
+#Deploy base lab environment = Hub + VPN Gateway + VM and two Spokes with one VM on each.
+echo Deploying base lab: Hub with Spoke1 and 2. VMs and Azure Route Server.
+echo "*** It will take around 20 minutes to finish the deployment ***"
+az group create --name $rg --location $location --output none
+az deployment group create --name lab-$RANDOM --resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
+--parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployHubERGateway=true deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--output none
+
+# Deploy NVA
+echo Deploying OPNSense Firewall...
+# Deploy two OPNsense instances on az-hub-vnet
+az network vnet subnet delete -g $rg --vnet-name az-hub-vnet -n AzureFirewallSubnet --output none
+az network vnet subnet create -g $rg --vnet-name az-hub-vnet -n untrusted --address-prefixes 10.0.0.64/28  --output none
+az network vnet subnet create -g $rg --vnet-name az-hub-vnet -n trusted --address-prefixes 10.0.0.80/28  --output none
+
+OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/inter-region-nva/scripts/
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineName=az-hub-opnnva
+virtualNetworkName=az-hub-vnet
+existingvirtualNetwork=existing
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
+az deployment group create --name az-hub-vnet-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName existingvirtualNetwork=$existingvirtualNetwork virtualNetworkName=$virtualNetworkName existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
