@@ -1,0 +1,84 @@
+#Parameters
+rg=lab-ars-sdwan #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+# Get Public IP Address from All VMs in the resource group
+az vm list-ip-addresses -g $rg -o table
+
+# SSH branch-fs1-lxnva1 
+fs1pip=$(az network public-ip show -n branch-fs1-lxnva1-pip -g $rg -o tsv --query ipAddress)
+ssh $username@$fs1pip
+
+# Get Public IP address of branch-fs1-lxnva1
+
+
+sudo apt-get update && sudo apt-get install -y strongswan
+
+# rename the default ipsec.conf file
+sudo mv /etc/ipsec.conf /etc/ipsec.conf.bak
+
+
+# create a new ipsec.conf file 
+
+#
+# /etc/ipsec.conf
+#
+conn %default
+        # Authentication Method : Pre-Shared Key
+        leftauth=psk
+        rightauth=psk
+        # Encryption Algorithm : aes-128-cbc
+        # Authentication Algorithm : sha1
+        # Perfect Forward Secrecy : Diffie-Hellman Group 2
+        ike=aes128-sha1-modp1024!
+        # Lifetime : 28800 seconds
+        ikelifetime=28800s
+        # Phase 1 Negotiation Mode : main
+        aggressive=no
+        # Protocol : esp
+        # Encryption Algorithm : aes-128-cbc
+        # Authentication Algorithm : hmac-sha1-96
+        # Perfect Forward Secrecy : Diffie-Hellman Group 2
+        esp=aes128-sha1-modp1024!
+        # Lifetime : 3600 seconds
+        lifetime=3600s
+        # Mode : tunnel
+        type=tunnel
+        # DPD Interval : 10
+        dpddelay=10s
+        # DPD Retries : 3
+        dpdtimeout=30s
+        # Tuning Parameters for AWS Remote Gateway:
+        keyexchange=ikev1
+        rekey=yes
+        reauth=no
+        dpdaction=restart
+        closeaction=restart
+        leftsubnet=0.0.0.0/0,::/0
+        rightsubnet=0.0.0.0/0,::/0
+        leftupdown=/etc/ipsec-vti.sh
+        installpolicy=yes
+        compress=no
+        mobike=no
+conn az-hub-lxnva1
+        # Local Gateway: :
+        left=10.64.0.4
+        leftid=20.225.76.40
+        # Remote Gateway :
+        right=104.215.123.37 
+        rightid=104.215.123.37 
+        auto=start
+        mark=100
+        #reqid=1
+conn az-hub-lxnva2
+        # Local Gateway: :
+        left=10.64.0.4
+        leftid=20.225.76.40
+        # Remote Gateway :
+        right=40.124.46.153
+        rightid=40.124.46.153
+        auto=start
+        mark=200
