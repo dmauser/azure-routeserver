@@ -51,3 +51,7 @@ done
 
 # Assign nsg to nvasubnet
 az network vnet subnet update -g $rg -n $nvasubnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
+
+# Add UDP 500 and 4500 to the NSG
+az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp500 --priority 100 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 500 --direction Inbound --access Allow --protocol Udp -o none
+az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp4500 --priority 101 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 4500 --direction Inbound --access Allow --protocol Udp -o none
