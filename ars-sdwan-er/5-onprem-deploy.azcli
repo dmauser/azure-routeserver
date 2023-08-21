@@ -1,0 +1,76 @@
+#Parameters
+rg=lab-ars-sdwan #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+#ExpressRoute specific variables
+ername1="$hubname-er-circuit" 
+perloc1="Dallas"
+providerloc1=Megaport
+ername2="dc1-er-circuit"
+perloc2="Dallas"
+providerloc2=Megaport
+
+# OPNsense NVA1 parameters
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineSize=Standard_DS1_v2
+virtualMachineName=dc1-opnnva
+virtualNetworkName=dc1
+existingvirtualNetwork=new
+VNETAddress=10.100.0.0/24 
+UntrustedSubnetCIDR=10.100.0.0/28
+TrustedSubnetCIDR=10.100.0.16/28
+GatewaySubnet=10.100.0.32/27
+subnet1=10.100.0.96/27
+subnet2=10.100.0.160/27
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/vpn-over-er/opnsense/
+
+echo "Deploying OPNsense NVA1 on the dc1"
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
+az deployment group create --name dc1-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+sleep 5
+echo Checking dc1 VNET provisioning state
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vnet show -n dc1 -g $rg  --query 'provisioningState' -o tsv)
+    echo "dc1 VNET provisioning state provisioningState="$prState
+    sleep 5
+done
+echo Creating dc1 VMs...
+# Depoly On-premises VM:
+# Subnet1
+az network vnet subnet create -g $rg --vnet-name dc1 -n main --address-prefixes $subnet1  --output none
+az vm create -n dc1-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet main --vnet-name dc1 --admin-username $username --admin-password $password --nsg "" --no-wait
+
+#Create ER circuits
+echo Creating ExpressRoute Circuits
+az network express-route create --bandwidth 50 -n $ername1 --peering-location "$perloc1" -g $rg --provider $providerloc1 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+az network express-route create --bandwidth 50 -n $ername2 --peering-location "$perloc2" -g $rg --provider $providerloc2 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+
+# Associating NSG to the VNET subnets (Spokes and dc1es)
+az network vnet subnet update -g $rg --vnet-name dc1 -n main --network-security-group $location-default-nsg -o none --no-wait
+
+#Create ExpressRoute Gateway
+echo Creating dc1 ExpressRoute Gateway
+az network vnet subnet create --address-prefix $GatewaySubnet --name GatewaySubnet -g $rg --vnet-name dc1 --output none
+az network public-ip create --name dc1-ergw-pip --resource-group $rg --location $location -o none
+az network vnet-gateway create --name dc1-ergw --resource-group $rg --location $location --public-ip-address dc1-ergw-pip --vnet dc1 --gateway-type "ExpressRoute" --sku "Standard" --no-wait
+
+echo Checking ER Gateway provisioning status...
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network express-route gateway show -g $rg -n $hubname-ergw --query provisioningState -o tsv)
+    echo ExpressRoute Gateway $hubname-ergw "provisioningState="$prState
+    sleep 5
+done
