@@ -13,8 +13,8 @@ instances=2 #NVA instances
 #Specific NVA BGP settings
 asn_quagga=65004 # Set ASN
 # Set Networks to be propagated
-bgp_network1=0.0.0.0/0 #Default Route Propagation
-bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
+bgp_network1=1.1.1.1/32 #Default Route Propagation
+bgp_network2=2.2.2.2/32 #Summary route for Hub/Spoke transit
 
 #Variables
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
