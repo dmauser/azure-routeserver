@@ -29,7 +29,7 @@ sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-s
 sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/fs1-ipsec-vti.sh -O /etc/ipsec-vti.sh
 
 # Make the script executable
-chmod +x /etc/ipsec-vti.sh
+sudo chmod +x /etc/ipsec-vti.sh
 
 # Restart the ipsec service
 sudo systemctl restart strongswan
@@ -40,14 +40,14 @@ sudo systemctl status strongswan
 # show the ipsec tunnels
 sudo ipsec statusall
 
-ip -s tunnel show
+sudo ip -s tunnel show
 
 ifconfig vti1
 
 # **************************************************************
 # Run on az-hub-lnxnva1
 # SSH az-hub-lnxnva1
-nva1pip=$(az network public-ip show -n az-hub-lxnva1PublicIP -g $rg -o tsv --query ipAddress)
+nva1pip=$(az vm show -d -g $rg -n az-hub-lxnva1 --query publicIps -o tsv)
 ssh $username@$nva1pip
 
 sudo apt-get update && sudo apt-get install -y strongswan
@@ -56,16 +56,16 @@ sudo apt-get update && sudo apt-get install -y strongswan
 sudo mv /etc/ipsec.conf /etc/ipsec.conf.bak
 
 # Download ipsec.conf from git hub
-sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/config/fs1-ipsec.conf -O /etc/ipsec.conf
+sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/nva1-ipsec.conf -O /etc/ipsec.conf
 
 # Download ipsec.secrets from git hub
-sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/config/fs1-ipsec.secrets -O /etc/ipsec.secrets
+sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/nva1-ipsec.secrets -O /etc/ipsec.secrets
 
-# Download script from git hub
-sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/fs1-ipsec-vti.sh -O /etc/ipsec-vti.sh
+# Download VTI script from git hub
+sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/nva1-ipsec-vti.sh -O /etc/ipsec-vti.sh
 
 # Make the script executable
-chmod +x /etc/ipsec-vti.sh
+sudo chmod +x /etc/ipsec-vti.sh
 
 # Restart the ipsec service
 sudo systemctl restart strongswan

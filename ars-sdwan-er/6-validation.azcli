@@ -1,0 +1,116 @@
+#Parameters
+rg=lab-ars-sdwan #Define your resource group
+location=southcentralus #Set location
+AzurehubName=az-hub #Azure Hub Name
+Azurespoke1Name=az-spk11 #Azure Spoke 1 name
+Azurespoke2Name=az-spk12 #Azure Spoke 2 name
+
+# List all vms and their ip addresses from the resource group
+az vm list-ip-addresses --resource-group $rg --output table
+
+# Ssh to the vms
+
+# Spoke11VM
+ssh azureuser@157.55.82.111
+# Spoke12VM
+ssh azureuser@23.98.141.1
+# DC1-lxvm
+ssh azureuser@13.65.89.133
+# fs1-lxvm
+ssh azureuser@4.151.59.104 
+# OPNSense (SDWAN)
+# az-opn-nva1
+https://104.214.63.174
+# az-opn-nva2
+
+# dc1-opn-nva
+https://13.85.63.134
+# fs1-opn-nva
+https://40.124.7.43
+
+
+# Connectivity tests:
+nc -v -z 10.0.1.4 22
+nc -v -z 10.0.2.4 22
+nc -v -z 10.128.0.4 22
+nc -v -z 10.64.0.36 22
+
+# VNG Dump Virtual Newtork Gateway routes
+echo Dumping Virtual Newtork Gateway routes
+az network vnet-gateway list-learned-routes -g $rg --name $AzurehubName-ergw -o table
+
+#Route Server specific settings:
+
+# RS instance IPs
+rsname=$(az network routeserver list --resource-group $rg --query "[].name" -o tsv | grep az)
+echo Router Server name $rsname: && \
+echo Route Server IPs: && \
+az network routeserver show --name $rsname --resource-group $rg --query 'virtualRouterIps[]' -o tsv && \
+echo -e && \
+# RS BGP peerings
+echo Route Server BGP peerings: && \
+az network routeserver peering list --resource-group $rg --routeserver $rsname -o table && \
+echo -e && \
+# RS advertised routes to NVA1 and NVA2
+for peer in $(az network routeserver peering list --resource-group $rg --routeserver $rsname --query "[].name" -o tsv)
+do
+  echo "Advertised routes from RS $rsname to" $peer
+  az network routeserver peering list-advertised-routes \
+   --resource-group $rg \
+   --name $peer \
+   --routeserver $rsname \
+   --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
+   --output table
+  echo -e
+done && \
+# RS learned routes
+for peer in $(az network routeserver peering list --resource-group $rg --routeserver $rsname --query "[].name" -o tsv)
+do
+  echo Learned routes on RS $rsname from $peer
+  az network routeserver peering list-learned-routes \
+   --resource-group $rg \
+   --name $peer \
+   --routeserver $rsname \
+   --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
+   --output table
+  echo -e
+done
+
+# Update Azure Route Server routing preference:
+echo Updating Azure Route Server routing preference
+hubroutingpreference=ASPath #(ASPath, ExpressRoute, VpnGateway)
+az network routeserver update -g $rg -n $rsname --hub-routing-preference $hubroutingpreference -o none
+
+# Azure Route Server config:
+echo Azure Route Server config:
+az network routeserver show --name $rsname --resource-group $rg
+# Get Azure Route Server routing preference using restapi 
+subid=$(az account show --query id -o tsv)
+echo Get Azure Route Server using restapi
+az rest --method get --uri /subscriptions/$subid/resourceGroups/$rg/providers/Microsoft.Network/virtualHubs/$rsname?api-version=2023-05-01 \
+--query properties.hubRoutingPreference -o tsv
+
+# Dump effective routes from az-spk11-lxvm
+echo Dumping effective routes from az-spk11-lxvm
+az network nic show-effective-route-table -g $rg --name az-spk11-lxvm-nic -o table
+
+# List all route table is the rg
+az network route-table list -g $rg -o table
+
+# Associate UDR to their respective subnets
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-hub-to-FW -o none
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke1Name-vnet --route-table az-rt-spoke-to-FW -o none
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke2Name-vnet --route-table az-rt-spoke-to-FW -o none
+az network vnet subnet update --name GatewaySubnet --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-GWSubnet-to-AzureFW -o none
+az network vnet subnet update --name opn-internal --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-sd-wan-to-AzureFW -o none  
+
+# Disassociate UDR from their respective subnets
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $AzurehubName-vnet --route-table null -o none
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke1Name-vnet --route-table null -o none
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke2Name-vnet --route-table null -o none
+az network vnet subnet update --name GatewaySubnet --resource-group $rg --vnet-name $AzurehubName-vnet --route-table null -o none
+az network vnet subnet update --name opn-internal --resource-group $rg --vnet-name $AzurehubName-vnet --route-table null -o none
+
+
+
+

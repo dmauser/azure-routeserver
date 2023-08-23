@@ -1,0 +1,22 @@
+# Deploy Palo Alto:
+az network vnet subnet create --address-prefix 10.0.0.96/28 --name FirewallSubnet --resource-group $rg --vnet-name $AzurehubName-vnet -o none
+az network vnet subnet create --address-prefix 10.0.0.112/28 --name LBnet --resource-group $rg --vnet-name $AzurehubName-vnet -o none
+az network vnet subnet create --address-prefix 10.0.0.176/28 --name Mgmt --resource-group $rg --vnet-name $AzurehubName-vnet -o none
+
+az vm image terms accept --urn paloaltonetworks:vmseries-flex:byol:latest
+
+# Create a Palo Alto firewalls in the hub VNET
+az network public-ip create --name az-PAN1MgmtIP --resource-group $rg --idle-timeout 30 --sku Standard
+az network public-ip create --name az-PAN1-Trust-PublicIP --resource-group $rg --idle-timeout 30 --sku Standard
+az network nic create --name az-PAN1MgmtInterface --resource-group $rg --subnet Mgmt --vnet-name $AzurehubName-vnet --public-ip-address az-PAN1MgmtIP --ip-forwarding true 
+az network nic create --name az-PAN1TrustInterface --resource-group $rg --subnet FirewallSubnet --vnet-name $AzurehubName-vnet --ip-forwarding true --public-ip-address az-PAN1-Trust-PublicIP 
+az vm create --resource-group $rg --location $location --name az-PAN1 --size Standard_D3_v2 --nics az-PAN1MgmtInterface az-PAN1TrustInterface  --image paloaltonetworks:vmseries-flex:byol:latest --admin-username azureuser --admin-password Msft123Msft123 --no-wait
+
+# Associate NSG to FirewallSubnet
+az network vnet subnet update --name FirewallSubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $location-default-nsg -o none
+
+# Associate NSG to Mgmt subnet
+az network vnet subnet update --name Mgmt --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $location-default-nsg -o none
+
+# Add 443 inbound from $myip to nsg
+az network nsg rule create --name Allow-HTTPS-From-Management-IP --nsg-name $location-default-nsg --priority 310 --resource-group $rg --access Allow --description "Allow HTTPS from Management IP" --destination-port-ranges 443 --direction Inbound --source-address-prefixes $mypip --source-port-ranges '*' --protocol Tcp -o none

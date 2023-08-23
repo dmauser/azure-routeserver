@@ -1,0 +1,123 @@
+#Parameters
+rg=lab-ars-sdwan #Define your resource group
+location=southcentralus #Set location
+username=azureuser #Set username
+password=Msft123Msft123 #Set password
+virtualMachineSize=Standard_DS1_v2 #Set VM size
+
+#Variables
+mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
+
+#Define parameters for Azure Hub and Spokes:
+AzurehubName=dc1 #Azure Hub Name
+AzurehubaddressSpacePrefix=10.128.0.0/24 #Azure Hub VNET address space
+AzurehubNamesubnetName=subnet1 #Azure Hub Subnet name where VM will be provisioned
+Azurehubsubnet1Prefix=10.128.0.0/27 #Azure Hub Subnet address prefix
+AzurehubgatewaySubnetPrefix=10.128.0.32/27 #Azure Hub Gateway Subnet address prefix
+AzureFirewallPrefix=10.128.0.64/26 #Azure Firewall Prefix
+AzurehubrssubnetPrefix=10.128.0.128/27 #Azure Hub Route Server subnet address prefix
+AzureHubBastionSubnet=10.128.0.192/26
+Azurespoke1Name=dc-spk11 #Azure Spoke 1 name
+Azurespoke1AddressSpacePrefix=10.128.1.0/24 # Azure Spoke 1 VNET address space
+Azurespoke1Subnet1Prefix=10.128.1.0/27 # Azure Spoke 1 Subnet1 address prefix
+Azurespoke2Name=dc-spk12 #Azure Spoke 1 name
+Azurespoke2AddressSpacePrefix=10.128.2.0/24 # Azure Spoke 1 VNET address space
+Azurespoke2Subnet1Prefix=10.128.2.0/27 # Azure Spoke 1 VNET address space
+
+#Parsing parameters above in Json format (do not change)
+JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$AzurehubaddressSpacePrefix\",\"subnetName\":\"$AzurehubNamesubnetName\",\"subnet1Prefix\":\"$Azurehubsubnet1Prefix\",\"AzureFirewallPrefix\":\"$AzureFirewallPrefix\",\"gatewaySubnetPrefix\":\"$AzurehubgatewaySubnetPrefix\",\"rssubnetPrefix\":\"$AzurehubrssubnetPrefix\",\"bastionSubnetPrefix\":\"$AzureHubBastionSubnet\",\"spoke1Name\":\"$Azurespoke1Name\",\"spoke1AddressSpacePrefix\":\"$Azurespoke1AddressSpacePrefix\",\"spoke1Subnet1Prefix\":\"$Azurespoke1Subnet1Prefix\",\"spoke2Name\":\"$Azurespoke2Name\",\"spoke2AddressSpacePrefix\":\"$Azurespoke2AddressSpacePrefix\",\"spoke2Subnet1Prefix\":\"$Azurespoke2Subnet1Prefix\"}
+
+#Deploy base lab environment = Hub + VPN Gateway + VM and two Spokes with one VM on each.
+echo Deploying base lab: Hub with Spoke1 and 2. VMs and Azure Route Server.
+echo "*** It will take around 20 minutes to finish the deployment ***"
+az group create --name $rg --location $location --output none
+az deployment group create --name lab-$RANDOM --resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
+--parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployHubERGateway=true deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--output none
+
+# Delete FirewallSubnet in dc1-vnet
+echo Deleting FirewallSubnet in dc1-vnet
+az network vnet subnet delete -g $rg --vnet-name dc1-vnet -n AzureFirewallSubnet -o
+
+# Created untrusted subnet in dc1-vnet
+echo Creating untrusted subnet in dc1-vnet
+az network vnet subnet create -g $rg --vnet-name dc1-vnet -n untrusted --address-prefixes 10.128.0.64/28 -o none
+
+# Created trusted subnet in dc1-vnet
+echo Creating trusted subnet in dc1-vnet
+az network vnet subnet create -g $rg --vnet-name dc1-vnet -n trusted --address-prefixes 10.128.0.80/28 -o none
+
+# OPNsense NVA1 parameters
+ShellScriptName=configureopnsense.sh
+scenarioOption="TwoNics"
+virtualMachineSize=Standard_DS1_v2
+virtualMachineName=dc1-opnnva
+virtualNetworkName=dc1-vnet
+existingvirtualNetwork=existing
+existingUntrustedSubnetName=untrusted
+existingTrustedSubnetName=trusted
+OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/vpn-over-er/opnsense/
+
+echo "Deploying OPNsense NVA1 on the dc1"
+az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
+az deployment group create --name dc1-nva-$RANDOM --resource-group $rg \
+--template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existing virtualNetworkName=$virtualNetworkName existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--no-wait
+
+# BGP peer OPNSense Trusted NIC with Azure Route Server
+opnnva1TrustedNicIP=$(az network nic show -g $rg -n dc1-opnnva-Trusted-NIC --query "ipConfigurations[0].privateIPAddress" -o tsv)
+echo BGP peer OPNSense Trusted NIC with Azure Route Server
+az network routeserver peering create --name opnnva1-rs-peer --resource-group $rg --routeserver dc1-routeserver --peer-asn 65128 --peer-ip $opnnva1TrustedNicIP --no-wait
+
+# Check when peering is established
+echo Check when peering is established
+while [ $(az network routeserver peering show --name opnnva1-rs-peer --resource-group $rg --routeserver dc1-routeserver --query provisioningState -o tsv) != "Succeeded" ]; do echo "Waiting for peering to be established..." && sleep 5; done
+
+
+#ExpressRoute specific variables
+ername1="azure-er-circuit" 
+perloc1="Dallas"
+providerloc1=Megaport
+ername2="branch-er-circuit"
+perloc2="Dallas"
+providerloc2=Megaport
+
+#Create ER circuits
+echo Creating ExpressRoute Circuits
+az network express-route create --bandwidth 50 -n $ername1 --peering-location "$perloc1" -g $rg --provider $providerloc1 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+az network express-route create --bandwidth 50 -n $ername2 --peering-location "$perloc2" -g $rg --provider $providerloc2 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
+
+
+# Provsioning ER circuits
+echo Please, provsioning ExpressRoute Circuits
+
+# Connect AzHub to ErCircuit1
+echo connecting az-hub to $ername1
+erid=$(az network express-route show -g $rg --name $ername1 --query id -o tsv)
+az network vpn-connection create --name connection-to-$ername1 \
+ --resource-group $rg --vnet-gateway1 az-hub-ergw \
+ --express-route-circuit2 $erid \
+ --routing-weight 0 \
+ &>/dev/null &
+
+# Connect $AzurehubName to ErCircuit2
+echo connecting $AzurehubName to $ername2
+erid=$(az network express-route show -g $rg --name $ername2 --query id -o tsv)
+az network vpn-connection create --name connection-to-$ername2 \
+ --resource-group $rg --vnet-gateway1 $AzurehubName-ergw \
+ --express-route-circuit2 $erid \
+ --routing-weight 0 \
+ &>/dev/null &
+
+
+echo Validating ER circuits connection to Gateways
+sleep 5
+prState=''
+while [[ $prState != 'Succeeded' ]];
+do
+    prState=$(az network vpn-connection show --name connection-to-$ername2 -g $rg --query 'provisioningState' -o tsv)
+    echo "ER connection connection-to-$ername2 provisioningState="$prState
+    sleep 5
+done

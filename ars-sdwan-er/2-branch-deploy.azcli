@@ -13,7 +13,7 @@ nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
 
 #Specific NVA BGP settings
 asn_quagga=65010 # Set ASN
-bgp_network1="10.64.0.0/24"
+bgp_network1="10.0.0.0/8"
 
 # Create NVa VNET
 az network vnet create --name $vnetname --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
@@ -22,7 +22,7 @@ az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name 
 # Assing nsg to the subnet
 az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
 # Create Ubuntu VM on vm-subnet 
-az vm create -n branch-fs1-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet main --vnet-name branch --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+az vm create -n branch-fs1-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet vm-subnet --vnet-name $vnetname --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
 
 # Deploy NVA instances on the target VNET above.
 nvanames=$(i=1;while [ $i -le $instances ];do echo $vnetname-$nvaintname$i; ((i++));done)
@@ -55,3 +55,12 @@ az network vnet subnet update -g $rg -n $nvasubnet --vnet-name $vnetname  --netw
 # Add UDP 500 and 4500 to the NSG
 az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp500 --priority 100 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 500 --direction Inbound --access Allow --protocol Udp -o none
 az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp4500 --priority 101 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 4500 --direction Inbound --access Allow --protocol Udp -o none
+
+# Create UDR to 10.0.0.0/8 to point to NVA
+# Get private ip of branch-fs1-lxnva1
+fs1nvaip=$(az network nic show --name branch-fs1-lxnva1-nic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+az network route-table create -g $rg --name $vnetname-UDR -l $location -o none
+az network route-table route create -g $rg --name $vnetname-UDR --route-table-name $vnetname-UDR --address-prefix 10.0.0.0/8 --next-hop-type VirtualAppliance --next-hop-ip-address $fs1nvaip -o none
+
+# Associate to branch main subnet
+az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname --route-table $vnetname-UDR -o none
