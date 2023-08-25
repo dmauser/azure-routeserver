@@ -12,13 +12,13 @@ nvaintname=lxnva #NVA instance name
 nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
 
 #Specific NVA BGP settings
-asn_quagga=65010 # Set ASN
-bgp_network1="10.0.0.0/8"
+asn_quagga=65011 # Set ASN
+bgp_network1="10.64.0.0/24"
 
 # Create NVa VNET
 az network vnet create --name $vnetname --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
 # Create VM subnet
-az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $vnetname --address-prefix 10.64.0.16/28
+az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $vnetname --address-prefix 10.64.0.48/28
 # Assing nsg to the subnet
 az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
 # Create Ubuntu VM on vm-subnet 

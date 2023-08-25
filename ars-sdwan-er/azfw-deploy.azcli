@@ -1,0 +1,142 @@
+##### Deploy Azure Firewall #####
+
+
+# Create Firewall Policy for each region:
+echo Creating Azure Firewall Policy
+az network firewall policy create -g $rg -n $AzurehubName-AZFW-Policy --threat-intel-mode Alert --location $location --sku Standard --output none
+# Create firewall policy rule collection group for each region:
+echo Creating Azure Firewall Policy Rule Collection Group for each region...
+az network firewall policy rule-collection-group create -g $rg --policy-name $AzurehubName-AZFW-Policy -n NetworkRuleCollectionGroup --priority 200 --output none
+
+# Create a any to any Network Rule Collection for each region:
+# For $AzurehubName-AZFW-Policy
+az network firewall policy rule-collection-group collection add-filter-collection \
+ --resource-group $rg \
+ --policy-name $AzurehubName-AZFW-Policy \
+ --name GenericCollection \
+ --rcg-name NetworkRuleCollectionGroup \
+ --rule-type NetworkRule \
+ --rule-name AnytoAny \
+ --action Allow \
+ --ip-protocols "Any" \
+ --source-addresses "*" \
+ --destination-addresses  "*" \
+ --destination-ports "*" \
+ --collection-priority 100 \
+ --output none
+
+#Build Azure Firewall / Note this section takes few minutes to complete.
+echo Building Azure Firewall...
+#Spoke 2
+# Create Azure Firewall Subnet and Management Subnets
+az network vnet subnet create -g $rg --vnet-name $AzurehubName-vnet -n AzureFirewallSubnet --address-prefixes 10.0.0.192/26 --output none
+az network public-ip create --name $AzurehubName-azfw-pip --resource-group $rg --location $location --allocation-method static --sku standard --output none --only-show-errors
+
+# Create Azure Firewall
+az network firewall create --name $AzurehubName-azfw --resource-group $rg --location $location --firewall-policy $AzurehubName-AZFW-Policy --vnet-name $AzurehubName-vnet --sku AZFW_VNet --tier Standard --conf-name FW-config --output none 
+# Add Public IP to the firewall
+az network firewall ip-config create --firewall-name $AzurehubName-azfw --name FW-config --m-name FW-mgmconfig --public-ip-address $AzurehubName-azfw-pip --resource-group $rg --vnet-name $AzurehubName-vnet --output none
+az network firewall update --name $AzurehubName-azfw --resource-group $rg --output none --only-show-errors
+
+# Log Analytics
+az monitor log-analytics workspace create -g $rg --workspace-name $AzurehubName-AzFW-Logs --location $location --no-wait
+
+az monitor diagnostic-settings create -n 'toLogAnalytics' \
+--resource $(az network firewall show --name $AzurehubName-azfw --resource-group $rg --query id -o tsv) \
+--workspace $(az monitor log-analytics workspace show -g $rg --workspace-name $AzurehubName-AzFW-Logs --query id -o tsv) \
+--logs '[{"category":"AzureFirewallApplicationRule","Enabled":true}, {"category":"AzureFirewallNetworkRule","Enabled":true}, {"category":"AzureFirewallDnsProxy","Enabled":true}]' \
+--metrics '[{"category": "AllMetrics","enabled": true}]' \
+--output none
+
+# Get Azure Firewall Private IP
+azfwip=$(az network firewall show --name $AzurehubName-azfw --resource-group $rg --query "ipConfigurations[].privateIPAddress" -o tsv)
+
+# Create UDR disabling bgp propgation and pointing default route to Palo Alto trusted
+az network route-table create --name az-rt-spoke-to-FW --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+az network route-table route create --resource-group $rg --name Default-to-FW --route-table-name az-rt-spoke-to-FW \
+ --address-prefix 0.0.0.0/0 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Exception --route-table-name az-rt-spoke-to-FW \
+ --address-prefix $mypip/32 \
+  --next-hop-type Internet \
+  --output none
+az network route-table route create --resource-group $rg --name Hub-via-FW --route-table-name az-rt-spoke-to-FW \
+ --address-prefix 10.0.0.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+
+# VM Subnet in the Hub
+az network route-table create --name az-rt-hub-to-FW --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+az network route-table route create --resource-group $rg --name Default-to-FW --route-table-name az-rt-hub-to-FW \
+ --address-prefix 0.0.0.0/0 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Exception --route-table-name az-rt-hub-to-FW \
+ --address-prefix $mypip/32 \
+  --next-hop-type Internet \
+  --output none
+az network route-table route create --resource-group $rg --name Spoke11-to-FW --route-table-name az-rt-hub-to-FW \
+ --address-prefix 10.0.1.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Spoke12-to-FW --route-table-name az-rt-hub-to-FW \
+ --address-prefix 10.0.2.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+
+# Associate UDR az-rt-hub-to-FW to Hub Subnet1
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-hub-to-FW -o none
+# Associate UDR az-rt-spoke-to-FW to Spoke11 Subnet1
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke1Name-vnet --route-table az-rt-spoke-to-FW -o none
+# Associate UDR az-rt-spoke-to-FW to Spoke12 Subnet1
+az network vnet subnet update --name subnet1 --resource-group $rg --vnet-name $Azurespoke2Name-vnet --route-table az-rt-spoke-to-FW -o none
+
+# Create UDR GatewaySubnet and pointing default route to Azure Firewall
+az network route-table create --name az-rt-GWSubnet-to-AzureFW --resource-group $rg --location $location -o none
+
+az network route-table route create --resource-group $rg --name Spoke11 --route-table-name az-rt-GWSubnet-to-AzureFW \
+ --address-prefix 10.0.1.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Spoke12 --route-table-name az-rt-GWSubnet-to-AzureFW \
+ --address-prefix 10.0.2.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Hub-Subnet1 --route-table-name az-rt-GWSubnet-to-AzureFW \
+ --address-prefix 10.0.0.0/27 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+
+# Associate UDR az-rt-GWSubnet-to-AzureFW to Gateway Subnet
+az network vnet subnet update --name GatewaySubnet --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-GWSubnet-to-AzureFW -o none
+
+# Create UDR SDWAN Subnet and pointing default route to Azure Firewall
+az network route-table create --name az-rt-sd-wan-to-AzureFW --resource-group $rg --location $location --disable-bgp-route-propagation -o none
+
+az network route-table route create --resource-group $rg --name Spoke11 --route-table-name az-rt-sd-wan-to-AzureFW \
+ --address-prefix 10.0.1.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Spoke12 --route-table-name az-rt-sd-wan-to-AzureFW \
+ --address-prefix 10.0.2.0/24 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+az network route-table route create --resource-group $rg --name Hub-Subnet1 --route-table-name az-rt-sd-wan-to-AzureFW \
+ --address-prefix 10.0.0.0/27 \
+  --next-hop-type VirtualAppliance \
+  --next-hop-ip-address $azfwip \
+  --output none
+
+# Associate UDR az-rt-sd-wan-to-AzureFW to opnsense Subnet
+az network vnet subnet update --name opn-internal --resource-group $rg --vnet-name $AzurehubName-vnet --route-table az-rt-sd-wan-to-AzureFW -o none  

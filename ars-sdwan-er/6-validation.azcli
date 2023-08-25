@@ -14,6 +14,8 @@ az vm list-ip-addresses --resource-group $rg --output table
 ssh azureuser@157.55.82.111
 # Spoke12VM
 ssh azureuser@23.98.141.1
+# HubVM
+ssh azureuser@23.102.133.165
 # DC1-lxvm
 ssh azureuser@13.65.89.133
 # fs1-lxvm
@@ -91,8 +93,8 @@ az rest --method get --uri /subscriptions/$subid/resourceGroups/$rg/providers/Mi
 --query properties.hubRoutingPreference -o tsv
 
 # Dump effective routes from az-spk11-lxvm
-echo Dumping effective routes from az-spk11-lxvm
-az network nic show-effective-route-table -g $rg --name az-spk11-lxvm-nic -o table
+echo Dumping effective routes from az-hub-lxvm
+az network nic show-effective-route-table -g $rg --name az-hub-lxvm-nic -o table | grep VirtualNetworkGateway
 
 # List all route table is the rg
 az network route-table list -g $rg -o table
