@@ -6,19 +6,20 @@ password=Msft123Msft123 #Set password
 virtualMachineSize=Standard_DS1_v2 #Set VM size
 
 # Deploy BGP endpoont (Make the changes based on your needs)
-vnetname=branch-fs1 #Target NET
+vnetname=branch2 #Target NET
 instances=1 #Set number of NVA instaces to be created
 nvaintname=lxnva #NVA instance name
 nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
 
 #Specific NVA BGP settings
-asn_quagga=65011 # Set ASN
-bgp_network1="10.64.0.0/24"
+local_asn=65065 # Set ASN
+rmt_asn=65005
+bgp_network1="10.65.0.0/24"
 
 # Create NVa VNET
 az network vnet create --name $vnetname --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
 # Create VM subnet
-az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $vnetname --address-prefix 10.64.0.48/28
+az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $vnetname --address-prefix 10.64.0.48/28 -o none
 # Assing nsg to the subnet
 az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
 # Create Ubuntu VM on vm-subnet 
@@ -43,11 +44,23 @@ do
  hubnva1_IP2=$(az network nic show --name az-hub-lxnva2VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
 
  # Enable routing and NAT on Linux NVA:
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/fs1-frr.sh"
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/branch-ffr.sh"
  az vm extension set --resource-group $rg --vm-name $nvaname  --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgp.sh $asn_quagga $bgp_routerId $bgp_network1 $hubnva1_IP1 $hubnva1_IP2\"}" \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./branch-ffr.sh $local_asn $bgp_routerId $bgp_network1 $hubnva1_IP1 $hubnva1_IP2 rmt_asn\"}" \
  --no-wait
 done
+
+# add loop script to only continue when vm extenstion is fully completed
+for nvaname in $nvanames
+do
+  while [ $(az vm extension list -g $rg --vm-name $nvaname --query "[?name=='customScript'].provisioningState" -o tsv) != "Succeeded" ]
+  do
+    echo "waiting for vm extension to complete"
+    sleep 5
+  done
+done
+
+
 
 # Assign nsg to nvasubnet
 az network vnet subnet update -g $rg -n $nvasubnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none

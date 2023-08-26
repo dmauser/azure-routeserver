@@ -1,11 +1,11 @@
 #!/bin/sh
 # Parameters
-asn_frr=$1
+local_asn=$1
 bgp_routerId=$2
 bgp_network1=$3
 peer_IP1=$4
 peer_IP2=$5
-
+rmt_asn=$6
 
 # Enable IPv4 and IPv6 forwarding
 sysctl -w net.ipv4.ip_forward=1
@@ -47,13 +47,13 @@ sed -i 's/bgpd=no/bgpd=yes/g' /etc/frr/daemons
 echo "add FRR config"
 cat <<EOF > /etc/frr/frr.conf
 !
-router bgp $asn_frr
+router bgp $local_asn
  bgp router-id $bgp_routerId
  no bgp ebgp-requires-policy
  network $bgp_network1
- neighbor $peer_IP1 remote-as 65515
+ neighbor $peer_IP1 remote-as $rmt_asn
  neighbor $peer_IP1 soft-reconfiguration inbound
- neighbor $peer_IP2 remote-as 65515
+ neighbor $peer_IP2 remote-as $rmt_asn
  neighbor $peer_IP2 soft-reconfiguration inbound
 !
  address-family ipv6
