@@ -1,4 +1,12 @@
 #!/bin/sh
+# Parameters
+asn_frr=$1
+bgp_routerId=$2
+bgp_network1=$3
+peer_IP1=$4
+peer_IP2=$5
+
+
 # Enable IPv4 and IPv6 forwarding
 sysctl -w net.ipv4.ip_forward=1
 sysctl -w net.ipv6.conf.all.forwarding=1
@@ -15,13 +23,6 @@ iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 # Save to IPTables file for persistence on reboot
 iptables-save > /etc/iptables/rules.v4
 
-# Parameters
-asn_frr=$1
-bgp_routerId=$2
-bgp_network1=$3
-routeserver_IP1=$4
-routeserver_IP2=$5
-
 echo "Installing IPTables-Persistent"
 echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
@@ -34,7 +35,7 @@ FRRVER="frr-stable"
 echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) $FRRVER | sudo tee -a /etc/apt/sources.list.d/frr.list
 
 sudo apt-get -y update
-apt-get -y install frr frr-pythontools
+sudo apt-get -y install frr frr-pythontools
 
 ##  run the updates and ensure the packages are up to date and there is no new version available for the packages
 sudo apt-get -y update --fix-missing
@@ -50,10 +51,10 @@ router bgp $asn_frr
  bgp router-id $bgp_routerId
  no bgp ebgp-requires-policy
  network $bgp_network1
- neighbor $routeserver_IP1 remote-as 65515
- neighbor $routeserver_IP1 soft-reconfiguration inbound
- neighbor $routeserver_IP2 remote-as 65515
- neighbor $routeserver_IP2 soft-reconfiguration inbound
+ neighbor $peer_IP1 remote-as 65515
+ neighbor $peer_IP1 soft-reconfiguration inbound
+ neighbor $peer_IP2 remote-as 65515
+ neighbor $peer_IP2 soft-reconfiguration inbound
 !
  address-family ipv6
  exit-address-family

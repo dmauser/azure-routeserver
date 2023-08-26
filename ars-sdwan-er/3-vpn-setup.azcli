@@ -20,7 +20,7 @@ sudo apt-get update && sudo apt-get install -y strongswan
 sudo mv /etc/ipsec.conf /etc/ipsec.conf.bak
 
 # Download ipsec.conf from git hub
-sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/config/fs1-ipsec.conf -O /etc/ipsec.conf
+sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/fs1-ipsec.conf -O /etc/ipsec.conf
 
 # Download ipsec.secrets from git hub
 sudo wget https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/config/fs1-ipsec.secrets -O /etc/ipsec.secrets
