@@ -8,7 +8,7 @@ nvasubnetprefix="10.0.0.160/28"
 nvaname=hub-lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
-asn_quagga=65004 # Set ASN
+asn_hubnva=65005 # Set ASN
 # Set Networks to be propagated
 bgp_network1=1.1.1.1/32 #Default Route Propagation
 bgp_network2=1.1.1.2/32 #Summary route for Hub/Spoke transit
@@ -32,13 +32,13 @@ do
  echo Enabling routing, NAT and BGP on Linux NVA $nvaintname
  scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgp.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgp.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgp.sh $asn_hubnva $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
  --force-update \
  --no-wait 
 
  # Building Route Server BGP Peering
  echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
- az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_quagga \
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_hubnva \
  --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
  --output none
 done
@@ -75,10 +75,56 @@ show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
 
-# Hub-lxnva1
-show ip bgp neighbors 169.254.1.1 received-routes
-show ip bgp neighbors 169.254.1.1 advertised-routes
+Hub NVAs
+show ip bgp neighbors 100.64.0.1 received-routes
+show ip bgp neighbors 100.64.0.1 advertised-routes
+show ip bgp neighbors 10.0.0.132 received-routes
+show ip bgp neighbors 10.0.0.132 advertised-routes
+show ip bgp neighbors 10.0.0.133 received-routes
+show ip bgp neighbors 10.0.0.133 advertised-routes
+
+
+
 
 # fas-lxnva1
-show ip bgp neighbors 169.254.1.2 received-routes
-show ip bgp neighbors 169.254.1.2 advertised-routes
+show ip bgp neighbors 100.64.0.2 received-routes
+show ip bgp neighbors 100.64.0.2 advertised-routes
+show ip bgp neighbors 100.64.0.3 received-routes
+show ip bgp neighbors 100.64.0.3 advertised-routes
+
+conf term
+router bgp 65005
+ bgp router-id 100.64.0.2
+ no bgp ebgp-requires-policy
+ no bgp network import-check
+ neighbor 10.0.0.132 remote-as 65515
+ neighbor 10.0.0.132 ebgp-multihop 255
+ neighbor 10.0.0.133 remote-as 65515
+ neighbor 10.0.0.133 ebgp-multihop 255
+ neighbor 100.64.0.1 remote-as 65065
+ !
+ address-family ipv4 unicast
+  neighbor 10.0.0.132 soft-reconfiguration inbound
+  neighbor 10.0.0.133 soft-reconfiguration inbound
+  neighbor 100.64.0.1 soft-reconfiguration inbound
+ exit-address-family
+exit
+
+# Peer with Route Server
+echo Peering NVAs with Route Server
+nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
+for nvaintname in $nvanames
+do
+ #NVA BGP config variables (do not change)
+ bgp_routerId=$(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+ routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
+ routeserver_IP2=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[1]}' -o tsv)
+
+ # Building Route Server BGP Peering
+ echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_hubnva \
+ --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
+ --output none
+done
+
+
