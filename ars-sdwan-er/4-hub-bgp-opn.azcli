@@ -1,0 +1,23 @@
+#Parameters
+rg=lab-ars-sdwan #Define your resource group
+location=$(az group show -n $rg --query location -o tsv)
+nvaname=az-opn-nva
+AzurehubName=az-hub #Azure Hub Name
+asn_hubnva=65004 # Set ASN
+
+# Peer with Route Server
+echo Peering NVAs with Route Server
+nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
+for nvaintname in $nvanames
+do
+ #NVA BGP config variables (do not change)
+ bgp_routerId=$(az network nic show --name "$nvaintname"-Trusted-NIC --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+ routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
+ routeserver_IP2=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[1]}' -o tsv)
+
+ # Building Route Server BGP Peering
+ echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_hubnva \
+ --peer-ip $(az network nic show --name "$nvaintname"-Trusted-NIC --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
+ --output none
+done

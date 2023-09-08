@@ -63,7 +63,7 @@ nvanames=$(i=1;while [ $i -le $instances ];do echo $AzurehubName-$nvaname$i; ((i
 for nvaintname in $nvanames
  do
   echo Creating $nvaintname...
-  az vm create -n $nvaintname  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
+  az vm create -n $nvaintname  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
   az network nic update -n "$nvaintname"VMNic -g $rg --ip-forwarding true --output none 
    # Enabling routing
   echo Enabling routing Linux NVA $nvaintname
@@ -107,6 +107,7 @@ do
  --name customScript \
  --publisher Microsoft.Azure.Extensions \
  --protected-settings "{\"fileUris\": [\"$nettoolsuri\"],\"commandToExecute\": \"./nettools.sh\"}" \
+ --force-update \
  --no-wait
 done
 

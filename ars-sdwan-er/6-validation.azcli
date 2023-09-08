@@ -114,5 +114,16 @@ az network vnet subnet update --name GatewaySubnet --resource-group $rg --vnet-n
 az network vnet subnet update --name opn-internal --resource-group $rg --vnet-name $AzurehubName-vnet --route-table null -o none
 
 
+# tcpdump icmp
+sudo tcpdump -n icmp
 
+##### Misc ############
+# Stop frr
+sudo systemctl stop frr
+# Start frr
+sudo systemctl start frr
+# Restart frr
+sudo systemctl restart frr
+# Dump IPteables NAT rules:
+sudo iptables -t nat -L -n -v
 

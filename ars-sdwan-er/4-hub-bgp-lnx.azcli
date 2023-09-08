@@ -8,7 +8,7 @@ nvasubnetprefix="10.0.0.160/28"
 nvaname=hub-lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
-asn_hubnva=65005 # Set ASN
+asn_hubnva=65004 # Set ASN
 # Set Networks to be propagated
 bgp_network1=1.1.1.1/32 #Default Route Propagation
 bgp_network2=1.1.1.2/32 #Summary route for Hub/Spoke transit
@@ -84,31 +84,14 @@ show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
 
 
-
+# Add Route to NVAs:
+ip route add 10.0.0.0/8 via 10.0.0.161 dev eth0 
 
 # fas-lxnva1
 show ip bgp neighbors 100.64.0.2 received-routes
 show ip bgp neighbors 100.64.0.2 advertised-routes
 show ip bgp neighbors 100.64.0.3 received-routes
 show ip bgp neighbors 100.64.0.3 advertised-routes
-
-conf term
-router bgp 65005
- bgp router-id 100.64.0.2
- no bgp ebgp-requires-policy
- no bgp network import-check
- neighbor 10.0.0.132 remote-as 65515
- neighbor 10.0.0.132 ebgp-multihop 255
- neighbor 10.0.0.133 remote-as 65515
- neighbor 10.0.0.133 ebgp-multihop 255
- neighbor 100.64.0.1 remote-as 65065
- !
- address-family ipv4 unicast
-  neighbor 10.0.0.132 soft-reconfiguration inbound
-  neighbor 10.0.0.133 soft-reconfiguration inbound
-  neighbor 100.64.0.1 soft-reconfiguration inbound
- exit-address-family
-exit
 
 # Peer with Route Server
 echo Peering NVAs with Route Server
@@ -126,5 +109,81 @@ do
  --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
  --output none
 done
+
+
+# Dump frr configuration
+sudo vtysh
+show running-config
+show ip bgp
+
+# Output Hub:
+Current configuration:
+!
+frr version 8.5.2
+frr defaults traditional
+hostname az-hub-lxnva1
+log syslog informational
+service integrated-vtysh-config
+!
+router bgp 65005
+ bgp router-id 100.64.0.2
+ no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
+ no bgp network import-check
+ neighbor 10.0.0.132 remote-as 65515
+ neighbor 10.0.0.132 ebgp-multihop 255
+ neighbor 10.0.0.133 remote-as 65515
+ neighbor 10.0.0.133 ebgp-multihop 255
+ neighbor 100.64.0.1 remote-as 65065
+ !
+ address-family ipv4 unicast
+  network 1.1.1.1/32
+  neighbor 10.0.0.132 activate
+  neighbor 10.0.0.132 soft-reconfiguration inbound
+  neighbor 10.0.0.133 activate
+  neighbor 10.0.0.133 soft-reconfiguration inbound
+  neighbor 100.64.0.1 activate
+  neighbor 100.64.0.1 soft-reconfiguration inbound
+ exit-address-family
+exit
+!
+end
+
+# Output Branch:
+Current configuration:
+!
+frr version 8.5.2
+frr defaults traditional
+hostname branch2-lxnva1
+service integrated-vtysh-config
+!
+router bgp 65065
+ no bgp ebgp-requires-policy
+ no bgp network import-check
+ neighbor 100.64.0.2 remote-as 65005
+ neighbor 100.64.0.3 remote-as 65005
+ !
+ address-family ipv4 unicast
+  network 10.64.0.0/24
+  network 10.65.0.0/24
+  neighbor 100.64.0.2 next-hop-self
+  neighbor 100.64.0.2 soft-reconfiguration inbound
+  neighbor 100.64.0.3 next-hop-self
+  neighbor 100.64.0.3 soft-reconfiguration inbound
+ exit-address-family
+exit
+!
+end
+
+# Add route:
+# Hub side
+ip route add 10.0.0.0/8 via 10.0.0.161 dev eth0
+# Branch side
+ip route add 10.64.0.0/24 via 10.64.0.1 dev eth0
+
+# Add route to 10.0.0.0/8 
+
+# show bash command history
+history
 
 

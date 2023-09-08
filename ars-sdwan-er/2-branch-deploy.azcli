@@ -5,8 +5,12 @@ username=azureuser #Set username
 password=Msft123Msft123 #Set password
 virtualMachineSize=Standard_DS1_v2 #Set VM size
 
+#Variables
+mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
+
+
 # Deploy BGP endpoont (Make the changes based on your needs)
-vnetname=branch2 #Target NET
+branchname=branch2 #Target NET
 instances=1 #Set number of NVA instaces to be created
 nvaintname=lxnva #NVA instance name
 nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
@@ -14,25 +18,25 @@ nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
 #Specific NVA BGP settings
 local_asn=65065 # Set ASN
 rmt_asn=65005
-bgp_network1="10.65.0.0/24"
+bgp_network1="10.64.0.0/24"
 
 # Create NVa VNET
-az network vnet create --name $vnetname --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
+az network vnet create --name $branchname-vnet --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
 # Create VM subnet
-az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $vnetname --address-prefix 10.64.0.48/28 -o none
+az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $branchname-vnet --address-prefix 10.64.0.48/28 -o none
 # Assing nsg to the subnet
-az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
+az network vnet subnet update -g $rg -n vm-subnet --vnet-name $branchname-vnet  --network-security-group southcentralus-default-nsg -o none
 # Create Ubuntu VM on vm-subnet 
-az vm create -n $vnetname-vm1  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet vm-subnet --vnet-name $vnetname --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
+az vm create -n $branchname-vm1  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet vm-subnet --vnet-name $branchname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
 
 # Deploy NVA instances on the target VNET above.
-nvanames=$(i=1;while [ $i -le $instances ];do echo $vnetname-$nvaintname$i; ((i++));done)
+nvanames=$(i=1;while [ $i -le $instances ];do echo $branchname-$nvaintname$i; ((i++));done)
 for nvaname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
  az network public-ip create --name $nvaname-pip --resource-group $rg --location $location --sku Standard --output none --only-show-errors
- az network nic create --name $nvaname-nic --resource-group $rg --subnet $nvasubnet --vnet $vnetname --public-ip-address $nvaname-pip --ip-forwarding true --location $location -o none
- az vm create --resource-group $rg --location $location --name $nvaname --size $virtualMachineSize --nics $nvaname-nic  --image UbuntuLTS --admin-username $username --admin-password $password -o none --only-show-errors
+ az network nic create --name $nvaname-nic --resource-group $rg --subnet $nvasubnet --vnet $branchname --public-ip-address $nvaname-pip --ip-forwarding true --location $location -o none
+ az vm create --resource-group $rg --location $location --name $nvaname --size $virtualMachineSize --nics $nvaname-nic  --image Ubuntu2204 --admin-username $username --admin-password $password -o none --only-show-errors
  
  #Enable boot diagnostics
  nvalocation=$(az vm show -n $nvaname -g $rg --query location -o tsv)
@@ -63,17 +67,22 @@ done
 
 
 # Assign nsg to nvasubnet
-az network vnet subnet update -g $rg -n $nvasubnet --vnet-name $vnetname  --network-security-group southcentralus-default-nsg -o none
+echo Creating NSG and associate to NVA Subnet
+az network nsg create --resource-group $rg --name $branchname-nva-nsg --location $location -o none
+az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'default-allow-ssh' --direction Inbound --priority 300 --source-address-prefixes $mypip --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges 22 --access Allow --protocol Tcp --description "Allow inbound SSH" --output none
+az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'allow-rfc1918-in' --direction Inbound --priority 310 --source-address-prefixes  10.0.0.0/8 172.16.0.0/12 192.168.0.0/16  --source-port-ranges '*' --destination-address-prefixes  10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --destination-port-ranges '*' --access Allow --protocol '*' --description "allow-rfc1918-in" --output none
+az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'allow-rfc1918-out' --direction outbound --priority 320 --source-address-prefixes 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --source-port-ranges '*' --destination-address-prefixes 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --destination-port-ranges '*' --access Allow --protocol '*' --description "allow-rfc1918-out" --output none
+az network vnet subnet update -g $rg --name $nvasubnetname --vnet-name $branchname-vnet --network-security-group $branchname-nva-nsg -o none
 
 # Add UDP 500 and 4500 to the NSG
 az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp500 --priority 100 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 500 --direction Inbound --access Allow --protocol Udp -o none
 az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp4500 --priority 101 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 4500 --direction Inbound --access Allow --protocol Udp -o none
 
 # Create UDR to 10.0.0.0/8 to point to NVA
-# Get private ip of $vnetname-lxnva1
-fs1nvaip=$(az network nic show --name $vnetname-lxnva1-nic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
-az network route-table create -g $rg --name $vnetname-UDR -l $location -o none
-az network route-table route create -g $rg --name $vnetname-UDR --route-table-name $vnetname-UDR --address-prefix 10.0.0.0/8 --next-hop-type VirtualAppliance --next-hop-ip-address $fs1nvaip -o none
+# Get private ip of $branchname-lxnva1
+fs1nvaip=$(az network nic show --name $branchname-lxnva1-nic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+az network route-table create -g $rg --name $branchname-UDR -l $location -o none
+az network route-table route create -g $rg --name $branchname-UDR --route-table-name $branchname-UDR --address-prefix 10.0.0.0/8 --next-hop-type VirtualAppliance --next-hop-ip-address $fs1nvaip -o none
 
 # Associate to branch main subnet
-az network vnet subnet update -g $rg -n vm-subnet --vnet-name $vnetname --route-table $vnetname-UDR -o none
+az network vnet subnet update -g $rg -n vm-subnet --vnet-name $branchname-vnet --route-table $branchname-UDR -o none
