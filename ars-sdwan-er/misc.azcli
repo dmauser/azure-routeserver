@@ -20,3 +20,6 @@ az network vnet subnet update --name Mgmt --resource-group $rg --vnet-name $Azur
 
 # Add 443 inbound from $myip to nsg
 az network nsg rule create --name Allow-HTTPS-From-Management-IP --nsg-name $location-default-nsg --priority 310 --resource-group $rg --access Allow --description "Allow HTTPS from Management IP" --destination-port-ranges 443 --direction Inbound --source-address-prefixes $mypip --source-port-ranges '*' --protocol Tcp -o none
+
+
+

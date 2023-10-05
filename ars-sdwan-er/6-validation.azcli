@@ -4,6 +4,7 @@ location=southcentralus #Set location
 AzurehubName=az-hub #Azure Hub Name
 Azurespoke1Name=az-spk11 #Azure Spoke 1 name
 Azurespoke2Name=az-spk12 #Azure Spoke 2 name
+rsname=$(az network routeserver list --resource-group $rg --query "[].name" -o tsv | grep az) #Azure Route Server name
 
 # List all vms and their ip addresses from the resource group
 az vm list-ip-addresses --resource-group $rg --output table
@@ -11,13 +12,13 @@ az vm list-ip-addresses --resource-group $rg --output table
 # Ssh to the vms
 
 # Spoke11VM
-ssh azureuser@157.55.82.111
+ssh azureuser@70.37.74.10
 # Spoke12VM
 ssh azureuser@23.98.141.1
 # HubVM
-ssh azureuser@23.102.133.165
+ssh azureuser@70.37.66.25 
 # DC1-lxvm
-ssh azureuser@13.65.89.133
+ssh azureuser@23.102.169.244
 # fs1-lxvm
 ssh azureuser@4.151.59.104 
 # OPNSense (SDWAN)
@@ -92,7 +93,7 @@ echo Get Azure Route Server using restapi
 az rest --method get --uri /subscriptions/$subid/resourceGroups/$rg/providers/Microsoft.Network/virtualHubs/$rsname?api-version=2023-05-01 \
 --query properties.hubRoutingPreference -o tsv
 
-# Dump effective routes from az-spk11-lxvm
+# ********* Dump effective routes from az-spk11-lxvm ********
 echo Dumping effective routes from az-hub-lxvm
 az network nic show-effective-route-table -g $rg --name az-hub-lxvm-nic -o table | grep VirtualNetworkGateway
 
@@ -127,3 +128,25 @@ sudo systemctl restart frr
 # Dump IPteables NAT rules:
 sudo iptables -t nat -L -n -v
 
+# Clean up
+# Remove Hub RouteServer peerings
+for peer in $(az network routeserver peering list --resource-group $rg --routeserver $rsname --query "[].name" -o tsv)
+do
+  echo Deleting peering $peer
+  az network routeserver peering delete --resource-group $rg --name $peer --routeserver $rsname -o none --yes
+done
+
+# Remove Hub RouteServer
+echo Deleting Route Server $rsname
+az network routeserver delete --name $rsname --resource-group $rg -o none --no-wait --yes
+
+# Remove DC1 routeserver peerings
+for peer in $(az network routeserver peering list --resource-group $rg --routeserver dc1-routeserver --query "[].name" -o tsv)
+do
+  echo Deleting peering $peer
+  az network routeserver peering delete --resource-group $rg --name $peer --routeserver dc1-routeserver -o none --yes
+done
+
+# Remove DC1 RouteServer
+echo Deleting Route Server dc1-routeserver
+az network routeserver delete --name dc1-routeserver --resource-group $rg -o none --no-wait --yes

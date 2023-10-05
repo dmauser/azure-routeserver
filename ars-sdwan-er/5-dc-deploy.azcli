@@ -75,7 +75,6 @@ az network routeserver peering create --name opnnva1-rs-peer --resource-group $r
 echo Check when peering is established
 while [ $(az network routeserver peering show --name opnnva1-rs-peer --resource-group $rg --routeserver dc1-routeserver --query provisioningState -o tsv) != "Succeeded" ]; do echo "Waiting for peering to be established..." && sleep 5; done
 
-
 #ExpressRoute specific variables
 ername1="azure-er-circuit" 
 perloc1="Dallas"
@@ -88,7 +87,6 @@ providerloc2=Megaport
 echo Creating ExpressRoute Circuits
 az network express-route create --bandwidth 50 -n $ername1 --peering-location "$perloc1" -g $rg --provider $providerloc1 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
 az network express-route create --bandwidth 50 -n $ername2 --peering-location "$perloc2" -g $rg --provider $providerloc2 -l $location --sku-family MeteredData --sku-tier Standard -o none &>/dev/null &
-
 
 # Provsioning ER circuits
 echo Please, provsioning ExpressRoute Circuits
