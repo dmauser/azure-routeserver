@@ -38,7 +38,7 @@ az deployment group create --name lab-$RANDOM --resource-group $rg \
 
 # Delete FirewallSubnet in dc1-vnet
 echo Deleting FirewallSubnet in dc1-vnet
-az network vnet subnet delete -g $rg --vnet-name dc1-vnet -n AzureFirewallSubnet -o
+az network vnet subnet delete -g $rg --vnet-name dc1-vnet -n AzureFirewallSubnet -o none
 
 # Created untrusted subnet in dc1-vnet
 echo Creating untrusted subnet in dc1-vnet
@@ -59,12 +59,16 @@ existingUntrustedSubnetName=untrusted
 existingTrustedSubnetName=trusted
 OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/vpn-over-er/opnsense/
 
+
 echo "Deploying OPNsense NVA1 on the dc1"
 az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
 az deployment group create --name dc1-nva-$RANDOM --resource-group $rg \
 --template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
---parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existing virtualNetworkName=$virtualNetworkName existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+--parameters OpnScriptURI=$OpnScriptURI scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$region \
 --no-wait
+
+
+
 
 # BGP peer OPNSense Trusted NIC with Azure Route Server
 opnnva1TrustedNicIP=$(az network nic show -g $rg -n dc1-opnnva-Trusted-NIC --query "ipConfigurations[0].privateIPAddress" -o tsv)
@@ -76,11 +80,11 @@ echo Check when peering is established
 while [ $(az network routeserver peering show --name opnnva1-rs-peer --resource-group $rg --routeserver dc1-routeserver --query provisioningState -o tsv) != "Succeeded" ]; do echo "Waiting for peering to be established..." && sleep 5; done
 
 #ExpressRoute specific variables
-ername1="azure-er-circuit" 
-perloc1="Dallas"
+ername1="sdwan-azure-er-circuit" 
+perloc1="Chicago"
 providerloc1=Megaport
-ername2="branch-er-circuit"
-perloc2="Dallas"
+ername2="sdwan-branch-er-circuit"
+perloc2="Chicago"
 providerloc2=Megaport
 
 #Create ER circuits
@@ -91,11 +95,17 @@ az network express-route create --bandwidth 50 -n $ername2 --peering-location "$
 # Provsioning ER circuits
 echo Please, provsioning ExpressRoute Circuits
 
+
+# Get the expressroute gatewys in the rg
+echo Getting the expressroute gatewys in the rg
+ergw1=$(az network vnet-gateway list -g $rg --query [].name -o tsv | grep az)
+ergw2=$(az network vnet-gateway list -g $rg --query [].name -o tsv | grep dc)
+
 # Connect AzHub to ErCircuit1
 echo connecting az-hub to $ername1
 erid=$(az network express-route show -g $rg --name $ername1 --query id -o tsv)
 az network vpn-connection create --name connection-to-$ername1 \
- --resource-group $rg --vnet-gateway1 az-hub-ergw \
+ --resource-group $rg --vnet-gateway1 $ergw1 \
  --express-route-circuit2 $erid \
  --routing-weight 0 \
  &>/dev/null &
@@ -104,7 +114,7 @@ az network vpn-connection create --name connection-to-$ername1 \
 echo connecting $AzurehubName to $ername2
 erid=$(az network express-route show -g $rg --name $ername2 --query id -o tsv)
 az network vpn-connection create --name connection-to-$ername2 \
- --resource-group $rg --vnet-gateway1 $AzurehubName-ergw \
+ --resource-group $rg --vnet-gateway1 $ergw2 \
  --express-route-circuit2 $erid \
  --routing-weight 0 \
  &>/dev/null &

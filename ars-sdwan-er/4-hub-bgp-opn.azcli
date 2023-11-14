@@ -1,7 +1,7 @@
 #Parameters
 rg=lab-ars-sdwan #Define your resource group
 location=$(az group show -n $rg --query location -o tsv)
-nvaname=az-opn-nva
+nvaname=az-hub-opnnva
 AzurehubName=az-hub #Azure Hub Name
 asn_hubnva=65004 # Set ASN
 

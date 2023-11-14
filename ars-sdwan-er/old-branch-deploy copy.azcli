@@ -9,48 +9,61 @@ virtualMachineSize=Standard_DS1_v2 #Set VM size
 mypip=$(curl -4 ifconfig.io -s) #Captures your local Public IP and adds it to NSG to restrict access to SSH only for your Public IP.
 
 # Deploy BGP endpoont (Make the changes based on your needs)
-branchname=branch1 #Target NET
+branchname=branch2 #Target NET
+instances=1 #Set number of NVA instaces to be created
+nvaintname=lxnva #NVA instance name
+nvasubnet=nvasubnet #Existing Subnet where NVA gets deployed
 
 #Specific NVA BGP settings
 local_asn=65065 # Set ASN
 rmt_asn=65005
 bgp_network1="10.64.0.0/24"
 
-# Create NVA VNET
-az network vnet create --name $branchname-vnet --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name vm-subnet --subnet-prefix 10.64.0.0/28 --location $location -o none
+# Create NVa VNET
+az network vnet create --name $branchname-vnet --resource-group $rg --location $location --address-prefix 10.64.0.0/24 --subnet-name $nvasubnet --subnet-prefix 10.64.0.0/28 --location $location -o none
+# Create VM subnet
+az network vnet subnet create --name vm-subnet --resource-group $rg --vnet-name $branchname-vnet --address-prefix 10.64.0.48/28 -o none
 # Assing nsg to the subnet
 az network vnet subnet update -g $rg -n vm-subnet --vnet-name $branchname-vnet  --network-security-group southcentralus-default-nsg -o none
 # Create Ubuntu VM on vm-subnet 
 az vm create -n $branchname-vm1  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet vm-subnet --vnet-name $branchname-vnet --admin-username $username --admin-password $password --nsg "" --no-wait --only-show-errors
 
-# Deploy OPNSense
-# OPNsense NVA parameters
-ShellScriptName=configureopnsense.sh
-scenarioOption="TwoNics"
-virtualMachineSize=Standard_DS1_v2
-virtualMachineName=$branchname-opnnva
-virtualNetworkName=$branchname-vnet
-existingvirtualNetwork=existing
-VNETAddress=10.64.0.0/24
-UntrustedSubnetCIDR=10.64.0.64/28
-TrustedSubnetCIDR=10.64.0.80/28
-existingUntrustedSubnetName=untrusted
-existingTrustedSubnetName=trusted
-OpnScriptURI=https://raw.githubusercontent.com/dmauser/azure-virtualwan/main/natvpn-over-er/opnsense/
+# Deploy NVA instances on the target VNET above.
+nvanames=$(i=1;while [ $i -le $instances ];do echo $branchname-$nvaintname$i; ((i++));done)
+for nvaname in $nvanames
+do
+ # Enable routing, NAT and BGP on Linux NVA:
+ az network public-ip create --name $nvaname-pip --resource-group $rg --location $location --sku Standard --output none --only-show-errors
+ az network nic create --name $nvaname-nic --resource-group $rg --subnet $nvasubnet --vnet $branchname --public-ip-address $nvaname-pip --ip-forwarding true --location $location -o none
+ az vm create --resource-group $rg --location $location --name $nvaname --size $virtualMachineSize --nics $nvaname-nic  --image Ubuntu2204 --admin-username $username --admin-password $password -o none --only-show-errors
+ 
+ #Enable boot diagnostics
+ nvalocation=$(az vm show -n $nvaname -g $rg --query location -o tsv)
+ az vm boot-diagnostics enable --name $nvaname -g $rg -o none
 
-# Create untrusted subnetnet
-echo Creating untrusted subnet
-az network vnet subnet create -g $rg --vnet-name $virtualNetworkName --name $existingUntrustedSubnetName --address-prefixes $UntrustedSubnetCIDR --output none
-# Create trusted subnetnet
-echo Creating trusted subnet
-az network vnet subnet create -g $rg --vnet-name $virtualNetworkName --name $existingTrustedSubnetName --address-prefixes $TrustedSubnetCIDR --output none
+ #NVA BGP config variables (do not change)
+ bgp_routerId=$(az network nic show --name $nvaname-nic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+ hubnva1_IP1=$(az network nic show --name az-hub-lxnva1VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+ hubnva1_IP2=$(az network nic show --name az-hub-lxnva2VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
 
-echo "Deploying OPNsense NVA1 on the $branchname"
-az vm image terms accept --urn thefreebsdfoundation:freebsd-13_1:13_1-release:13.1.0 -o none
-  az deployment group create --name $branchname-nva-$RANDOM --resource-group $rg \
- --template-uri "https://raw.githubusercontent.com/dmauser/opnazure/master/ARM/main.json" \
- --parameters scenarioOption=$scenarioOption virtualMachineName=$virtualMachineName virtualMachineSize=$virtualMachineSize existingvirtualNetwork=$existingvirtualNetwork VNETAddress="[\"$VNETAddress\"]" virtualNetworkName=$virtualNetworkName UntrustedSubnetCIDR=$UntrustedSubnetCIDR TrustedSubnetCIDR=$TrustedSubnetCIDR existingUntrustedSubnetName=$existingUntrustedSubnetName existingTrustedSubnetName=$existingTrustedSubnetName Location=$location \
+ # Enable routing and NAT on Linux NVA:
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-sdwan-er/script/branch-ffr.sh"
+ az vm extension set --resource-group $rg --vm-name $nvaname  --name customScript --publisher Microsoft.Azure.Extensions \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./branch-ffr.sh $local_asn $bgp_routerId $bgp_network1 $hubnva1_IP1 $hubnva1_IP2 $rmt_asn\"}" \
+ --force-update \
  --no-wait
+done
+
+# add loop script to only continue when vm extenstion is fully completed
+for nvaname in $nvanames
+do
+  while [ $(az vm extension list -g $rg --vm-name $nvaname --query "[?name=='customScript'].provisioningState" -o tsv) != "Succeeded" ]
+  do
+    echo "waiting for vm extension to complete"
+    sleep 5
+  done
+done
+
 
 # Assign nsg to nvasubnet
 echo Creating NSG and associate to NVA Subnet
@@ -58,7 +71,7 @@ az network nsg create --resource-group $rg --name $branchname-nva-nsg --location
 az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'default-allow-ssh' --direction Inbound --priority 300 --source-address-prefixes $mypip --source-port-ranges '*' --destination-address-prefixes '*' --destination-port-ranges 22 --access Allow --protocol Tcp --description "Allow inbound SSH" --output none
 az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'allow-rfc1918-in' --direction Inbound --priority 310 --source-address-prefixes  10.0.0.0/8 172.16.0.0/12 192.168.0.0/16  --source-port-ranges '*' --destination-address-prefixes  10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --destination-port-ranges '*' --access Allow --protocol '*' --description "allow-rfc1918-in" --output none
 az network nsg rule create -g $rg --nsg-name $branchname-nva-nsg -n 'allow-rfc1918-out' --direction outbound --priority 320 --source-address-prefixes 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --source-port-ranges '*' --destination-address-prefixes 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 --destination-port-ranges '*' --access Allow --protocol '*' --description "allow-rfc1918-out" --output none
-az network vnet subnet update -g $rg --name trusted --vnet-name $branchname-vnet --network-security-group $branchname-nva-nsg -o none
+az network vnet subnet update -g $rg --name $nvasubnetname --vnet-name $branchname-vnet --network-security-group $branchname-nva-nsg -o none
 
 # Add UDP 500 and 4500 to the NSG
 az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow-udp500 --priority 100 --source-address-prefixes '*' --destination-address-prefixes '*' --destination-port-ranges 500 --direction Inbound --access Allow --protocol Udp -o none
@@ -66,7 +79,7 @@ az network nsg rule create -g $rg --nsg-name southcentralus-default-nsg -n allow
 
 # Create UDR to 10.0.0.0/8 to point to NVA
 # Get private ip of $branchname-lxnva1
-fs1nvaip=$(az network nic show --name $branchname-opnnva-Trusted-NIC --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+fs1nvaip=$(az network nic show --name $branchname-lxnva1-nic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
 az network route-table create -g $rg --name $branchname-UDR -l $location -o none
 az network route-table route create -g $rg --name $branchname-UDR --route-table-name $branchname-UDR --address-prefix 10.0.0.0/8 --next-hop-type VirtualAppliance --next-hop-ip-address $fs1nvaip -o none
 
