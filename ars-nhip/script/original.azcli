@@ -77,7 +77,7 @@ for nvaintname in $nvanames
  do
   # Enable routing, NAT and BGP on Linux NVA:
   echo Creating $nvaintname...
-  az vm create -n $nvaintname  -g $rg --image ubuntults --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
+  az vm create -n $nvaintname  -g $rg --image Ubuntu2204 --public-ip-sku Standard --size $virtualMachineSize -l $location --subnet $nvasubnetname --vnet-name $AzurehubName-vnet --admin-username $username --admin-password $password --nsg "" --output none
   az network nic update -n "$nvaintname"VMNic -g $rg --ip-forwarding true --output none 
  done
 

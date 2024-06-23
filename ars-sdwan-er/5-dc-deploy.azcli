@@ -68,8 +68,6 @@ az deployment group create --name dc1-nva-$RANDOM --resource-group $rg \
 --no-wait
 
 
-
-
 # BGP peer OPNSense Trusted NIC with Azure Route Server
 opnnva1TrustedNicIP=$(az network nic show -g $rg -n dc1-opnnva-Trusted-NIC --query "ipConfigurations[0].privateIPAddress" -o tsv)
 echo BGP peer OPNSense Trusted NIC with Azure Route Server
