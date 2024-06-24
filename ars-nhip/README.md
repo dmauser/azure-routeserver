@@ -49,7 +49,7 @@ The main objective of this lab is to demonstrate traffic going over high availab
 - Hub VNET has three virtual machines (VMs): az-hub-lxvm (10.0.0.4), az-spk1-lxvm (10.0.1.4), and az-spk2-lxvm.
 - Azure Route Server (az-hub-routeserver) for routing propagation between Linux NVAs and VNETs.
 - Azure Load Banacer (az-hub-nvailb) with two NVAs as backends.
-- Both NVAs are running Ubuntu 18.04 and BGP with Quagga. Both have single network interface cards to handle private traffic (East/West) and Internet (North/South).
+- Both NVAs are running Ubuntu 22.04 and BGP with FFRouting. Both have single network interface cards to handle private traffic (East/West) and Internet (North/South).
 
 ## Task 1: Deploy base lab and test connectivity
 
