@@ -25,7 +25,7 @@
 
 ## Jun 2024 Updates
 
-- Moved Azure VM imamges from Ubuntu 18.04 to 22.04.
+- Moved Azure VM images from Ubuntu 18.04 to 22.04.
 - Moved BGP from Quagga to FRRouting.
 
 ## Intro
