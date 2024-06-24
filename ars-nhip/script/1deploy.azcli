@@ -83,7 +83,6 @@ az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'default-a
 az network vnet subnet update -g $rg --name $nvasubnetname --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg -o none
 
 echo Provisioning NVAs
-nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIpConfigurations[0].privateIPAddress" -o tsv) #Set Next-Hop IP
 nvanames=$(i=1;while [ $i -le $instances ];do echo $AzurehubName-$nvaname$i; ((i++));done)
 for nvaintname in $nvanames
  do
