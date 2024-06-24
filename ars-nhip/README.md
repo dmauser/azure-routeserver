@@ -23,6 +23,11 @@
   - [Re-validate Internet Breakout from Spoke VNET](#re-validate-internet-breakout-from-spoke-vnet)
 - [Closing](#closing)
 
+## Jun 2024 Updates
+
+- Moved Azure VM imamges from Ubuntu 18.04 to 22.04.
+- Moved BGP from Quagga to FRRouting.
+
 ## Intro
 
 The main objective of this lab is to demonstrate traffic going over high available NVAs leveraging Azure Route Server. During the lab, you are going to explore the following:
@@ -201,7 +206,7 @@ nvasubnetprefix="10.0.0.160/28"
 nvaname=nva
 instances=2 #NVA instances
 #Specific NVA BGP settings
-asn_quagga=65004 # Set ASN
+asn_frr=65004 # Set ASN
 # Set Networks to be propagated
 bgp_network1=0.0.0.0/0 #Default Route Propagation
 bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
@@ -223,15 +228,14 @@ do
 
  # Enabling routing, NAT and BGP on Linux NVA:
  echo Enabling routing, NAT and BGP on Linux NVA $nvaintname
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgp.sh"
- az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgp.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
- --force-update \
- --no-wait 
+ scripturi="https://raw.githubusercontent.com/dmauser/AzureVM-Router/master/scripts/linuxrouterbgpfrr2.sh"
+ az vm extension set --resource-group $rg --vm-name $nvaintname  --name customScript --publisher Microsoft.Azure.Extensions \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpfrr2.sh $asn_frr $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2\"}" \
+ --no-wait
 
  # Building Route Server BGP Peering
- echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
- az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_quagga \
+ echo Building BGP Peering between $AzurehubName-rs and $nvaintname
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-rs --name $nvaintname --peer-asn $asn_frr \
  --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
  --output none
 done
@@ -343,16 +347,16 @@ In this section, both NVAs and how that will affect transit between Spoke 1 and 
 #Parameters
 rg=lab-ars-nhip #Define your resource group
 
-#Enable Iptables on both NVAs by allowing ICMP and TCP ports 80, 53, 443, 22, and 5201
-echo 'Enable Iptables NVA by allowing ICMP, TCP ports 80, 53, 443, 22, and 5201'
+#Enable IPTables on both NVAs by allowing ICMP and TCP ports 80, 53, 443, 22, and 5201
+echo 'Enable IPTables NVA by allowing ICMP, TCP ports 80, 53, 443, 22, and 5201'
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 for nvaintname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
- echo Enabling Iptables rules on $nvaintname
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/Iptables.sh"
+ echo Enabling IPtables rules on $nvaintname
+ scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/iptables.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./Iptables.sh\"}" \
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./iptables.sh\"}" \
  --force-update \
  --output none
 done
@@ -446,7 +450,7 @@ nvasubnetprefix="10.0.0.160/28"
 nvaname=lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
-asn_quagga=65004 # Set ASN
+asn_frr=65004 # Set ASN
 # Set Networks to be propagated
 bgp_network1=0.0.0.0/0 #Default Route Propagation
 bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
@@ -454,19 +458,21 @@ bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
 # *** Note ***: Before running next session make sure both NVAs are up and running
 echo Configuring NVAs to use custom IP Next hop to Load Balancer
 # Set Next-Hop IP
-nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIpConfigurations[0].privateIPAddress" -o tsv) 
-bgp_routerId=$(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[0].privateIPAddress" -o tsv) 
 routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
 routeserver_IP2=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[1]}' -o tsv)
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 for nvaintname in $nvanames
 do
  # Enable routing, NAT and BGP on Linux NVA:
- scripturi="https://raw.githubusercontent.com/dmauser/azure-routeserver/main/ars-nhip/script/linuxrouterbgpnh.sh"
+ bgp_routerId=$(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv)
+ scripturi="https://raw.githubusercontent.com/dmauser/AzureVM-Router/master/scripts/linuxrouterbgpfrr2nh.sh"
  az vm extension set --resource-group $rg --vm-name $nvaintname --name customScript --publisher Microsoft.Azure.Extensions \
- --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpnh.sh $asn_quagga $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
- --force-update 
+ --protected-settings "{\"fileUris\": [\"$scripturi\"],\"commandToExecute\": \"./linuxrouterbgpfrr2nh.sh $asn_frr $bgp_routerId $bgp_network1 $bgp_network2 $routeserver_IP1 $routeserver_IP2 $nexthopip\"}" \
+ --force-update \
+ --no-wait 
 done
+echo "NVA Configuration completed"
 ```
 
 ### Connectivity revalidation after _set ip next-hop_
@@ -618,7 +624,7 @@ az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg \
  --access Allow --protocol "*" \
  --description "Allows NVA single NIC use Internet Breakout" \
  --output none
-az network vnet subnet update --name nvasubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg
+az network vnet subnet update --name nvasubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg -o none
 ```
 
 ### Re-validate Internet Breakout from Spoke VNET
