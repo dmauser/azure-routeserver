@@ -36,8 +36,8 @@ do
  --no-wait
 
  # Building Route Server BGP Peering
- echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname
- az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_quagga \
+ echo Building BGP Peering between $AzurehubName-rs and $nvaintname
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-rs --name $nvaintname --peer-asn $asn_quagga \
  --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
  --output none
 done

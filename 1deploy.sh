@@ -1,6 +1,6 @@
 #Parameters
 rg=lab-ars-nhip #Define your resource group
-location=eastus2 #Set location
+location=eastus #Set location
 username=azureuser #Set username
 password=Msft123Msft123 #Set password
 virtualMachineSize=Standard_DS1_v2 #Set VM size
@@ -11,7 +11,7 @@ nvasubnetprefix="10.0.0.160/28"
 nvaname=lxnva
 instances=2 #NVA instances
 #Specific NVA BGP settings
-asn_frr=65004 # Set ASN
+asn_quagga=65004 # Set ASN
 # Set Networks to be propagated
 bgp_network1=0.0.0.0/0 #Default Route Propagation
 bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
@@ -42,34 +42,10 @@ JsonAzure={\"hubName\":\"$AzurehubName\",\"addressSpacePrefix\":\"$Azurehubaddre
 echo Deploying base lab: Hub with Spoke1 and 2. VMs and Azure Route Server.
 echo "*** It will take around 20 minutes to finish the deployment ***"
 az group create --name $rg --location $location --output none
-az deployment group create --name lab-deployment --resource-group $rg \
---template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv5.json \
+az deployment group create --name lab-$RANDOM --resource-group $rg \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv3.json \
 --parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
---output none \
---no-wait
-
-# Add script start time
-echo "Deployment started at $(date +"%Y-%m-%d %H:%M:%S")"
-
-# Loop script to check deployment progress
-echo "Checking deployment status..."
-while true
-do
-  timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-  deploymentStatus=$(az deployment group show --name lab-deployment --resource-group $rg --query properties.provisioningState -o tsv)
-  if [ "$deploymentStatus" == "Succeeded" ]; then
-    echo "$timestamp - Deployment completed successfully."
-    break
-  elif [ "$deploymentStatus" == "Failed" ]; then
-    echo "$timestamp - Deployment failed."
-    break
-  else
-    echo "$timestamp - Deployment in progress..."
-    sleep 15s
-  fi
-done
-
-
+--output none
 
 # Deploy NVA instances on the target VNET above.
 # Creating NVA VNET

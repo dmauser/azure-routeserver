@@ -48,14 +48,14 @@ az deployment group create --name lab-$RANDOM --resource-group $rg \
 --output none \
 --no-wait
 
-echo Validating $AzurehubName-routeserver provisioning before deploying the NVA
+echo Validating $AzurehubName-rs provisioning before deploying the NVA
 subid=$(az account list --query "[?isDefault == \`true\`].id" --all -o tsv)
 prState=''
 while [[ $prState != 'Succeeded' ]];
 do
     prState=$(
-az rest --method get --uri /subscriptions/$subid/resourceGroups/$rg/providers/Microsoft.Network/virtualHubs/$AzurehubName-routeserver/ipConfigurations?api-version=2022-01-01 --query 'value[].properties.provisioningState' -o tsv)
-    echo "$AzurehubName-routeserver provisioning status provisioningState="$prState
+az rest --method get --uri /subscriptions/$subid/resourceGroups/$rg/providers/Microsoft.Network/virtualHubs/$AzurehubName-rs/ipConfigurations?api-version=2022-01-01 --query 'value[].properties.provisioningState' -o tsv)
+    echo "$AzurehubName-rs provisioning status provisioningState="$prState
     sleep 5
 done
 
@@ -148,8 +148,8 @@ do
  --no-wait 
 
  # Building Route Server BGP Peering
- echo Building BGP Peering between $AzurehubName-routeserver and $nvaintname:
- az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-routeserver --name $nvaintname --peer-asn $asn_quagga \
+ echo Building BGP Peering between $AzurehubName-rs and $nvaintname:
+ az network routeserver peering create --resource-group $rg --routeserver $AzurehubName-rs --name $nvaintname --peer-asn $asn_quagga \
  --peer-ip $(az network nic show --name "$nvaintname"VMNic --resource-group $rg --query ipConfigurations[0].privateIPAddress -o tsv) \
  --output none
 done
@@ -302,15 +302,15 @@ sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 # RS instance IPs
 az network routeserver list --resource-group $rg --query '{IPs:[].virtualRouterIps}' -o tsv
 # RS BGP Peerings
-az network routeserver peering list --resource-group $rg --routeserver $AzurehubName-routeserver -o table 
+az network routeserver peering list --resource-group $rg --routeserver $AzurehubName-rs -o table 
 # RS advertised routes to NVA1 and NVA2
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 do
-  echo Advertised routes from RS $AzurehubName-routeserver to $nva
+  echo Advertised routes from RS $AzurehubName-rs to $nva
   az network routeserver peering list-advertised-routes \
    --resource-group $rg \
    --name $nva \
-   --routeserver $AzurehubName-routeserver \
+   --routeserver $AzurehubName-rs \
    --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
    --output table
   echo -e
@@ -319,11 +319,11 @@ done
 # RS learned routes
 for nva in $(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
 do
-  echo Learned routes on RS $AzurehubName-routeserver from $nva
+  echo Learned routes on RS $AzurehubName-rs from $nva
   az network routeserver peering list-learned-routes \
    --resource-group $rg \
    --name $nva \
-   --routeserver $AzurehubName-routeserver \
+   --routeserver $AzurehubName-rs \
    --query "[RouteServiceRole_IN_0,RouteServiceRole_IN_1][]" \
    --output table
   echo -e
