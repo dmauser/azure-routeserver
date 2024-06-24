@@ -6,7 +6,7 @@ sed -i "/net.ipv4.ip_forward=1/ s/# *//" /etc/sysctl.conf
 sed -i "/net.ipv6.conf.all.forwarding=1/ s/# *//" /etc/sysctl.conf
 
 # Parameters
-asn_quagga=$1
+asn_frr=$1
 bgp_routerId=$2
 bgp_network1=$3
 bgp_network2=$4
@@ -97,7 +97,7 @@ cat <<EOF > /etc/quagga/bgpd.conf
 !
 log file /var/log/quagga/bgpd.log informational
 !
-router bgp $asn_quagga
+router bgp $asn_frr
  bgp router-id $bgp_routerId
  network $bgp_network1
  network $bgp_network2
