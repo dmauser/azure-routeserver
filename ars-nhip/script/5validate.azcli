@@ -15,4 +15,4 @@ az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'allow-nva
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
 
-# Why do I neeed to make those changes on UDR and NSG to the Internet Breakout to work?
+# Why do I neeed to make those changes on both UDR and NSG to the Internet Breakout to work?

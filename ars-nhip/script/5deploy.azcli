@@ -19,4 +19,4 @@ az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg \
  --access Allow --protocol "*" \
  --description "Allows NVA single NIC use Internet Breakout" \
  --output none
-az network vnet subnet update --name nvasubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg
+az network vnet subnet update --name nvasubnet --resource-group $rg --vnet-name $AzurehubName-vnet --network-security-group $AzurehubName-nva-nsg -o none
