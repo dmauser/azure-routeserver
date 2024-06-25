@@ -17,15 +17,19 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Use Bastion or Serial console to access az-SPK1-lxvm:
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
 # Run the following commands:
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
+# az-spk2-lxvm
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) --auth-type password --username azureuser
 # Run the following commands:
 ping 10.0.1.4 -c 5
-sudo hping3 10.0.1.4 -S -p 80 -c 10
+sudo hping3 10.0.1.4 -S -p 80 -c 10 
 curl 10.0.1.4
 
 # How about connectivity to Hub-lxvm1 vm? Does it work?
@@ -37,7 +41,7 @@ curl 10.0.0.4
 
 #UDR for Hub traffic to Azure NVA (disables BGP propagation)
 ## Create UDR + Disable BGP Propagation
-nvalb=$(az network lb show -g $rg --name $AzurehubName-lxnva-ilb --query "frontendIpConfigurations[].privateIPAddress" -o tsv)
+nvalb=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[].privateIPAddress" -o tsv)
 ## Create UDR
 az network route-table create --name rt-spoke-to-nva --resource-group $rg --location $location --disable-bgp-route-propagation true --output none
 ## Default and private traffic to the NVA Load Balancer:

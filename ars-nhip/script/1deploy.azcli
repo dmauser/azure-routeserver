@@ -43,8 +43,8 @@ echo Deploying base lab: Hub with Spoke1 and 2. VMs and Azure Route Server.
 echo "*** It will take around 20 minutes to finish the deployment ***"
 az group create --name $rg --location $location --output none
 az deployment group create --name lab-deployment --resource-group $rg \
---template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv5.json \
---parameters Restrict_SSH_VM_AccessByPublicIP=$mypip deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv6.json \
+--parameters  virtualMachinePublicIP=false deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
 --output none \
 --no-wait
 
@@ -68,9 +68,6 @@ do
     sleep 15s
   fi
 done
-# Stop time
-echo "Deployment finished at $(date +"%Y-%m-%d %H:%M:%S")"
-
 # Deploy NVA instances on the target VNET above.
 # Creating NVA VNET
 echo Creating NVA VNET
@@ -116,10 +113,7 @@ do
   --output none
 done
 
-# VM Net utilities and serial console
-#Enable boot diagnostics
-echo Enabling boot diagnostics for all VMs
-az vm boot-diagnostics enable --ids $(az vm list -g $rg --query "[].id" -o tsv) -o none
+# VM Net utilities
 echo Installing tools for networking connectivity validation such as traceroute, tcptraceroute, iperf and others  
 nettoolsuri="https://raw.githubusercontent.com/dmauser/azure-vm-net-tools/main/script/nettools.sh"
 for vm in `az vm list -g $rg --query "[?contains(storageProfile.imageReference.offer, 'ubuntu')].name" -o tsv`
@@ -140,4 +134,7 @@ az network route-table route create --resource-group $rg --name default-to-Inter
  --next-hop-type Internet \
  --output none
 az network vnet subnet update -n $nvasubnetname -g $rg --vnet-name $AzurehubName-vnet --route-table $AzurehubName-rt-nva -o none
+
+# Stop time
+echo "Deployment finished at $(date +"%Y-%m-%d %H:%M:%S")"
 echo "Deployment has finished"

@@ -20,7 +20,7 @@ bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
 # *** Note ***: Before running next session make sure both NVAs are up and running
 echo Configuring NVAs to use custom IP Next hop to Load Balancer
 # Set Next-Hop IP
-nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[0].privateIPAddress" -o tsv) 
+nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[].privateIPAddress" -o tsv) 
 routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
 routeserver_IP2=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[1]}' -o tsv)
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
