@@ -25,7 +25,7 @@ sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# az-spk2-lxvm
+# Bastion
 az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) --auth-type password --username azureuser
 # Run the following commands:
 ping 10.0.1.4 -c 5
