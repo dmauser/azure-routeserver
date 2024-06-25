@@ -44,7 +44,7 @@ echo "*** It will take around 20 minutes to finish the deployment ***"
 az group create --name $rg --location $location --output none
 az deployment group create --name lab-deployment --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv6.json \
---parameters  virtualMachinePublicIP=false deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--parameters  virtualMachinePublicIP=true deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
 --output none \
 --no-wait
 
