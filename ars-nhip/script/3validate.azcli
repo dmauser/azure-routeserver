@@ -22,10 +22,13 @@ curl 10.0.1.4
 # North/South traffic does not get affected. You can go straight to Task 5 and validate that.
 
 # (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
+
 sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ====> Turn off one of the NVAs above and re-run the same tests:
+# Example: Stop/deallocate vm az-hub-lxnva2
+az vm deallocate -g $rg -n az-hub-lxnva2
 # Check the route table after one of the NVAs are offline
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
@@ -35,13 +38,17 @@ echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
+# Alternatively you add as-path prepend to make one instance more preferred than the other (making it active/passive), but this is not covered in this lab.
+
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Bastion
 az network bastion ssh --name az-hub-bastion -g $rg \
  --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
  --auth-type password --username azureuser
-# Run the following commands on SPK2-lxvm1
+# Run the following commands:
+ping 10.0.2.4 -c 5
+sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
@@ -50,6 +57,7 @@ az network bastion ssh --name az-hub-bastion -g $rg \
  --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
  --auth-type password --username azureuser
 # Run the following commands:
+ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
@@ -58,3 +66,5 @@ curl 10.0.1.4
 # 2) What happens if you bring back online the other NVA?
 
 # Important ===========> Bring back the NVA and make sure both are up and running before you proceed to task 4.
+# Example: start vm az-hub-lxnva2
+az vm start -g $rg -n az-hub-lxnva2

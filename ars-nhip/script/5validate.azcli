@@ -11,8 +11,6 @@ curl ifconfig.io
 
 # Review UDR
 az network route-table show --name $AzurehubName-rt-nva --resource-group $rg --query routes -o table
-# Review Existing NSG
-az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'allow-nva-inetbreakout' 
 
 # Run the content of 5deploy.azcli
 

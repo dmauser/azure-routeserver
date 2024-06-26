@@ -79,6 +79,14 @@ do
 done
 
 # Optional - review NVA BGP configuration
+#Bastion to az-hub-lxnva1
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-hub-lxnva1 --query id -o tsv) \
+ --auth-type password --username azureuser
+ #Bastion to az-hub-lxnva2
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-hub-lxnva2 --query id -o tsv) \
+ --auth-type password --username azureuser
 # 1) Access either NVAs or both and run the following commands:
 # 2) Elevate shell as root by running
 sudo -s
