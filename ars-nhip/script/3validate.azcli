@@ -38,13 +38,17 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
 # Bastion
-az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
 # Run the following commands on SPK2-lxvm1
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
 # Bastion
-az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
 # Run the following commands:
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4

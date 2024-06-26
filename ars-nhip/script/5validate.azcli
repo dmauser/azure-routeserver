@@ -2,7 +2,9 @@
 # Validate internet access
 # Run the following on either spk1-lxvm or spk2-lxvm
 # Bastion
-az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
 # Run the following on either spk1-lxvm or spk2-lxvm:
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
