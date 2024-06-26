@@ -19,12 +19,16 @@ echo $Azurespoke2Name-lxvm &&\
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+# Run the following commmand:
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4 
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+# Run the following commmand:
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 

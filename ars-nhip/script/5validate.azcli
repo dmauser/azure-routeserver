@@ -1,6 +1,9 @@
 # BEFORE deploy
 # Validate internet access
 # Run the following on either spk1-lxvm or spk2-lxvm
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
+# Run the following on either spk1-lxvm or spk2-lxvm:
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
 
@@ -9,7 +12,7 @@ az network route-table show --name $AzurehubName-rt-nva --resource-group $rg --q
 # Review Existing NSG
 az network nsg rule create -g $rg --nsg-name $AzurehubName-nva-nsg -n 'allow-nva-inetbreakout' 
 
-# Run deploy
+# Run the content of 5deploy.azcli
 
 # Re-run the commands again:
 nc -v -z 8.8.8.8 53

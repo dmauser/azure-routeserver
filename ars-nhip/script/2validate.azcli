@@ -16,12 +16,15 @@ az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Na
 
 # Can az-spk1-lxvm reach az-spk2-lxvm?
 # Access using Serial Console or SSH over VM's public IP. 
-# Note that Bastion access is not possible due the fact 0/0 via NVA+BGP is injected to the Bastion.
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) --auth-type password --username azureuser
 # On  az-spk1-lxvm run the following
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 # Check also from the opposite side. 
+# Bastion
+az network bastion ssh --name az-hub-bastion --resource-group $rg --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) --auth-type password --username azureuser
 # From az-spk2-lxvm to az-spk1-lxvm:
 ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10

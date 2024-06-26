@@ -44,7 +44,7 @@ echo "*** It will take around 20 minutes to finish the deployment ***"
 az group create --name $rg --location $location --output none
 az deployment group create --name lab-deployment --resource-group $rg \
 --template-uri https://raw.githubusercontent.com/dmauser/azure-hub-spoke-base-lab/main/azuredeployv6.json \
---parameters  virtualMachinePublicIP=true deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
+--parameters  virtualMachinePublicIP=false deployAzureRouteServer=true Azure=$JsonAzure VmAdminUsername=$username VmAdminPassword=$password virtualMachineSize=$virtualMachineSize deployBastion=true \
 --output none \
 --no-wait
 
@@ -113,6 +113,12 @@ do
   --output none
 done
 
+# Enable boot diagnostics on the vms that contain the word "nva"
+echo Enabling boot diagnostics on the NVAs
+for vm in `az vm list -g $rg --query "[?contains(name, 'nva')].name" -o tsv`
+do
+ az vm boot-diagnostics enable --name $vm --resource-group $rg --output none
+done
 # VM Net utilities
 echo Installing tools for networking connectivity validation such as traceroute, tcptraceroute, iperf and others  
 nettoolsuri="https://raw.githubusercontent.com/dmauser/azure-vm-net-tools/main/script/nettools.sh"
