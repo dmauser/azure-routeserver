@@ -24,7 +24,7 @@ az network bastion ssh --name az-hub-bastion -g $rg \
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
-# Check also from the opposite side. 
+# Check also from the opposite side (az-spk2-lxvm). 
 # Bastion
 az network bastion ssh --name az-hub-bastion -g $rg \
  --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
