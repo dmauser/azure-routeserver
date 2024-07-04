@@ -394,13 +394,12 @@ sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
 # Questions:
-# 1) Why do you see packet loss when you run hping3?
-# 2) Why does ping not fail?
-# 3) Your curl command can work or fail if you re-run them multiple times; why?
-# 4) How about Internet Breakout? Would it fail too?
-# Internet breakout does not work here because there are requirements covered on task 5.
-# Keep in mind that the asymmetric issue only affects inspection for private traffic (East/West).
-# North/South traffic does not get affected. You can go straight to Task 5 and validate that.
+#1. Why is there packet loss when running hping3?
+#2. Why does ping not fail?
+#3. Why does the curl command sometimes work and sometimes fail when re-run multiple times?
+#4. Would Internet Breakout also fail in this scenario?
+
+# Please note that Internet Breakout is not functional due to specific requirements outlined in Task 5. It's important to understand that the asymmetric issue only affects inspection for private traffic (East/West), while North/South traffic remains unaffected. You can proceed to Task 5 to validate this.
 
 # (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
 
@@ -456,6 +455,7 @@ az vm start -g $rg -n az-hub-lxnva2
 We will leverage the BGP attribute called custom next hop IP to use Azure Load Balancer as the next. Both NVAs have a route-map configured with the command [set ip next-hop](https://www.nongnu.org/quagga/docs/docs-multi/Route-Map-Set-Command.html), and when interacting via BGP with Azure Route Server, that passes that information to the Virtual Network, finally committing to the effective routes of the Spoke 1 and 2 VMS.
 
 Reference diagram:
+
 ![validaiton4](./media/validation4.png)
 
 ### Configuring route-map _set ip next-hop_ in both NVAs
