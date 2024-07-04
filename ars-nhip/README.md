@@ -30,14 +30,14 @@
 
 ## Intro
 
-The main objective of this lab is to demonstrate traffic going over high available NVAs leveraging Azure Route Server. During the lab, you are going to explore the following:
+The main objective of this lab is to demonstrate traffic going over high available NVAs leveraging Azure Route Server. During the lab, you will explore the following:
 
 - Review and validate connectivity fundamentals between Spokes via Hub using UDRs.
-- Use Azure Route Server and NVAs to allow Spoke-to-Spoke connectivity without UDRs.
+- Use Azure Route Server and NVAs to enable Spoke-to-Spoke connectivity without UDRs.
 - Describe the default behavior for traffic going over high-available NVAs when using Azure Route Server.
 - Introduce stateful inspection via Iptables on the NVAs and demonstrate the side effects of asymmetric routing for spoke-to-spoke connectivity (East/West traffic).
-- Demonstrate the [Azure Route Server next hop IP feature](https://https://learn.microsoft.com/en-us/azure/route-server/next-hop-ip) and how it solves potential asymmetric issues, and spoke-to-spoke go over NVAs leveraging stateful inspection.
-- Configure and understand Internet Breakout and how to configure UDRs and NSGs to ensure NVAs and Spoke VMs can go out to the Internet.
+- Demonstrate the [Azure Route Server next hop IP feature](https://https://learn.microsoft.com/en-us/azure/route-server/next-hop-ip) and how it solves potential asymmetric issues, allowing spoke-to-spoke traffic to go over NVAs while leveraging stateful inspection.
+- Configure and understand Internet Breakout, including how to configure UDRs and NSGs to ensure NVAs and Spoke VMs can access the Internet.
 
 ## Base network topology
 
@@ -96,23 +96,31 @@ location=$(az group show -n $rg --query location -o tsv)
 # Check Spoke VMs route tables
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
-az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
+az network nic show -g $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
+az network nic show-effective-route-table -g $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
 echo $Azurespoke2Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
-az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+az network nic show -g $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
+az network nic show-effective-route-table -g $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Use Bastion or Serial console to access az-SPK1-lxvm:
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
 # Run the following commands:
 ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
 # Run the following commands:
 ping 10.0.1.4 -c 5
-sudo hping3 10.0.1.4 -S -p 80 -c 10
+sudo hping3 10.0.1.4 -S -p 80 -c 10 
 curl 10.0.1.4
 
 # How about connectivity to Hub-lxvm1 vm? Does it work?
@@ -124,16 +132,16 @@ curl 10.0.0.4
 
 #UDR for Hub traffic to Azure NVA (disables BGP propagation)
 ## Create UDR + Disable BGP Propagation
-nvalb=$(az network lb show -g $rg --name $AzurehubName-lxnva-ilb --query "frontendIpConfigurations[].privateIPAddress" -o tsv)
+nvalb=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[].privateIPAddress" -o tsv)
 ## Create UDR
-az network route-table create --name rt-spoke-to-nva --resource-group $rg --location $location --disable-bgp-route-propagation true --output none
+az network route-table create --name rt-spoke-to-nva -g $rg --location $location --disable-bgp-route-propagation true --output none
 ## Default and private traffic to the NVA Load Balancer:
-az network route-table route create --resource-group $rg --name default-to-NVA --route-table-name rt-spoke-to-nva  \
+az network route-table route create -g $rg --name default-to-NVA --route-table-name rt-spoke-to-nva  \
 --address-prefix 0.0.0.0/0 \
 --next-hop-type VirtualAppliance \
 --next-hop-ip-address $nvalb \
 --output none
-az network route-table route create --resource-group $rg --name private-traffic-to-NVA --route-table-name rt-spoke-to-nva  \
+az network route-table route create -g $rg --name private-traffic-to-NVA --route-table-name rt-spoke-to-nva  \
 --address-prefix 10.0.0.0/16 \
 --next-hop-type VirtualAppliance \
 --next-hop-ip-address $nvalb \
@@ -145,11 +153,11 @@ az network vnet subnet update -n subnet1 -g $rg --vnet-name $Azurespoke2Name-vne
 # Check Spoke VMs route tables (it may take few sconds to take effect the UDR changes made, re-run commands below until see expected route tables)
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
-az network nic show-effective-route-table --resource-group $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
+az network nic show -g $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
+az network nic show-effective-route-table -g $rg -n $Azurespoke1Name-lxvm-nic -o table &&\
 echo $Azurespoke2Name-lxvm &&\
-az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
-az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
+az network nic show -g $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
+az network nic show-effective-route-table -g $rg -n $Azurespoke2Name-lxvm-nic -o table
 
 # Expected output:
 :'
@@ -395,10 +403,13 @@ curl 10.0.1.4
 # North/South traffic does not get affected. You can go straight to Task 5 and validate that.
 
 # (OPTIONAL) Review IPtables and start network captures running on both NVA1 and NVA2
+
 sudo iptables -L -v #review Forward IP table rules
 sudo tcpdump -n host 10.0.1.4 and host 10.0.2.4
 
 # ====> Turn off one of the NVAs above and re-run the same tests:
+# Example: Stop/deallocate vm az-hub-lxnva2
+az vm deallocate -g $rg -n az-hub-lxnva2
 # Check the route table after one of the NVAs are offline
 echo Check Spoke VMs Route tables:
 echo $Azurespoke1Name-lxvm &&\
@@ -408,14 +419,26 @@ echo $Azurespoke2Name-lxvm &&\
 az network nic show --resource-group $rg -n $Azurespoke2Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
 az network nic show-effective-route-table --resource-group $rg -n $Azurespoke2Name-lxvm-nic -o table
 
+# Alternatively you add as-path prepend to make one instance more preferred than the other (making it active/passive), but this is not covered in this lab.
+
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
-# Run the following commands on SPK2-lxvm1
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
+# Run the following commands:
+ping 10.0.2.4 -c 5
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following commands
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
+# Run the following commands:
+ping 10.0.1.4 -c 5
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
@@ -424,6 +447,8 @@ curl 10.0.1.4
 # 2) What happens if you bring back online the other NVA?
 
 # Important ===========> Bring back the NVA and make sure both are up and running before you proceed to task 4.
+# Example: start vm az-hub-lxnva2
+az vm start -g $rg -n az-hub-lxnva2
 ```
 
 ## Task 4: Enabling the custom IP Next Hop feature
@@ -458,7 +483,7 @@ bgp_network2=10.0.0.0/16 #Summary route for Hub/Spoke transit
 # *** Note ***: Before running next session make sure both NVAs are up and running
 echo Configuring NVAs to use custom IP Next hop to Load Balancer
 # Set Next-Hop IP
-nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[0].privateIPAddress" -o tsv) 
+nexthopip=$(az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[].privateIPAddress" -o tsv) 
 routeserver_IP1=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[0]}' -o tsv)
 routeserver_IP2=$(az network routeserver list --resource-group $rg --query '{IPs:[0].virtualRouterIps[1]}' -o tsv)
 nvanames=$(az vm list -g $rg --query '[?contains(name,`'$nvaname'`)].name' -o tsv)
@@ -488,7 +513,7 @@ Azurespoke2Name=az-spk2 #Azure Spoke 1 name
 
 # Check Spoke VMs route tables
 echo Load Balancer IP: &&\
- az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIpConfigurations[0].privateIPAddress" -o tsv &&\
+ az network lb show -g $rg --name $AzurehubName-$nvaname-ilb --query "frontendIPConfigurations[].privateIPAddress" -o tsv &&\
 echo Check Spoke VMs Route tables: &&\
 echo $Azurespoke1Name-lxvm &&\
  az network nic show --resource-group $rg -n $Azurespoke1Name-lxvm-nic --query "ipConfigurations[].privateIPAddress" -o tsv &&\
@@ -499,12 +524,20 @@ echo $Azurespoke2Name-lxvm &&\
 
 # Can az-spk1-lxvm1 reach az-spk2-lxvm2?
 # Access Bastion or Serial console on az-SPK1-lxvm:
-# Run the following to SPK2-lxvm1
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
+# Run the following commmand:
 sudo hping3 10.0.2.4 -S -p 80 -c 10
 curl 10.0.2.4 
 
 # Access Bastion or Serial console on az-SPK2-lxvm:
-# Run the following
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk2-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
+# Run the following commmand:
 sudo hping3 10.0.1.4 -S -p 80 -c 10
 curl 10.0.1.4
 
@@ -566,6 +599,10 @@ show ip bgp neighbors 10.0.0.132 received-routes
 show ip bgp neighbors 10.0.0.132 advertised-routes
 show ip bgp neighbors 10.0.0.133 received-routes
 show ip bgp neighbors 10.0.0.133 advertised-routes
+
+# Questions:
+# 1) Does spoke 1 and 2 know are communicating correctly after next hop ip pointing to the Load Balancer?
+# 2) If you bring the other NVA back online again, what happens?
 ```
 
 ## Task 5: (Bonus) Configuring Internet Breakout
@@ -580,9 +617,13 @@ Reference diagram:
 Run the following commands on spk1-lxvm or spk2-lxvm:
 
 ```Bash
+# Bastion
+az network bastion ssh --name az-hub-bastion -g $rg \
+ --target-resource-id $(az vm show -g $rg -n az-spk1-lxvm --query id -o tsv) \
+ --auth-type password --username azureuser
+# Run the following on either spk1-lxvm or spk2-lxvm:
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
-sudo hping3 www.bing.com -S -p 80 -c 10
 ```
 
 ### Review UDR and deploy NSG
@@ -634,7 +675,6 @@ Run the following commands on spk1-lxvm or spk2-lxvm:
 ```Bash
 nc -v -z 8.8.8.8 53
 curl ifconfig.io
-sudo hping3 www.bing.com -S -p 80 -c 10
 ```
 
 Review content of the az-hub-nva-nsg NSG and rules in place:
@@ -647,4 +687,4 @@ Review the security rule allow-nva-inetbreakout, and why do we need a destinatio
 
 ## Closing
 
-In this Lab, you have learned how to use Azure Route Server to facilitate East/West traffic between Spoke1 and Spoke2 without using UDRs. You also enabled traffic inspection and found how that can impact traffic between Spokes. We instructed the Azure Route Server Next IP Hop to steer the same traffic over the Internal Load Balancer and at the same time, mitigate the asymmetric routing issues. Finally, you learned how to properly configure your NVA for Internet breakout by adding a UDR on the NVA's subnet, forcing traffic to the Internet service tags, and adjusting NSG to ensure Spoke VMs can use NVA for Internet access.
+In this lab, you have learned how to utilize Azure Route Server to facilitate East/West traffic between Spoke1 and Spoke2 without the need for User-Defined Routes (UDRs). Additionally, you enabled traffic inspection and observed its impact on traffic between the spokes. By instructing the Azure Route Server Next IP Hop to direct traffic over the Internal Load Balancer, you were able to mitigate asymmetric routing issues. Lastly, you gained knowledge on properly configuring your Network Virtual Appliance (NVA) for Internet breakout by adding a UDR on the NVA's subnet, ensuring traffic is directed to the Internet service tags, and adjusting the Network Security Group (NSG) to allow Spoke VMs to access the Internet through the NVA.
