@@ -10000,6 +10000,16 @@ router bgp 65004
   network 10.60.10.40/29
   network 10.60.10.48/29
   network 10.60.10.56/29
+  network 10.60.10.64/29
+  network 10.60.10.72/29
+  network 10.60.10.80/29
+  network 10.60.10.88/29
+  network 10.60.10.96/29
+  network 10.60.10.104/29
+  network 10.60.10.112/29
+  network 10.60.10.120/29
+  network 10.60.10.128/29
+  network 10.60.10.136/29
  neighbor 10.0.0.133 remote-as 65515
  neighbor 10.0.0.133 ebgp-multihop 255
  neighbor 10.0.0.133 soft-reconfiguration inbound

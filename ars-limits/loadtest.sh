@@ -18,3 +18,4 @@ wget https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main
 cp 10K-routes.txt /etc/frr/frr.conf
 systemctl restart frr #restart FRR daemon.
 tail -f /var/log/frr/bgpd.log
+
