@@ -19,3 +19,6 @@ cat ./ars-limits/7280-routes.txt | grep "network" | wc -l
 
 # on the file 5K-routes.txt count grep for network
 cat ./ars-limits/5K-routes.txt | grep "network" | wc -l
+
+# on the file 6473-routes.txt count grep for network
+cat ./ars-limits/6473-routes.txt | grep "network" | wc -l
