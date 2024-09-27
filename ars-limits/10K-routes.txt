@@ -4,7 +4,7 @@ frr defaults traditional
 hostname az-hub-lxnva1
 service integrated-vtysh-config
 !
-log file /var/log/quagga/bgpd.log informational
+log file /var/log/frr/bgpd.log informational
 |
 router bgp 65004
  bgp router-id 10.0.0.164
