@@ -8,11 +8,13 @@ curl -sL https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/
 ### Lab diagram
 https://github.com/dmauser/azure-routeserver/blob/main/ars-nhip/media/validation2.png
 
-### Usinb bastion log on az-hub-lxnva1 
+### Using bastion log on az-hub-lxnva1 
 # elevate to root
 sudo -s
 ### backup frr config
 cat /etc/frr/frr.conf > /etc/frr/frr.conf.bak
+
+#### Run below the desired load test
 
 ### 5K routes: https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main/ars-limits/5K-routes.txt
 rm /var/log/frr/bgpd.log #clean logs
