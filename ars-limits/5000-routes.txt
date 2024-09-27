@@ -10,12 +10,6 @@ router bgp 65004
  bgp router-id 10.0.0.164
  no bgp ebgp-requires-policy
  no bgp network import-check
- neighbor 10.0.0.132 remote-as 65515
- neighbor 10.0.0.132 ebgp-multihop
- neighbor 10.0.0.133 remote-as 65515
- neighbor 10.0.0.133 ebgp-multihop
- !
- address-family ipv4 unicast
   network 0.0.0.0/0
   network 10.0.0.0/16
   network 10.50.0.0/29
@@ -10035,10 +10029,12 @@ router bgp 65004
   network 10.54.28.40/29
   network 10.54.28.48/29
   network 10.54.28.56/29
- neighbor 192.168.1.68 remote-as 65515
- neighbor 192.168.1.68 soft-reconfiguration inbound
- neighbor 192.168.1.69 remote-as 65515
- neighbor 192.168.1.69 soft-reconfiguration inbound
+ neighbor 10.0.0.133 remote-as 65515
+ neighbor 10.0.0.133 ebgp-multihop 255
+ neighbor 10.0.0.133 soft-reconfiguration inbound
+ neighbor 10.0.0.132 remote-as 65515
+ neighbor 10.0.0.132 ebgp-multihop 255
+ neighbor 10.0.0.132 soft-reconfiguration inbound
 !
  address-family ipv6
  exit-address-family
