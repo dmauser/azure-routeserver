@@ -7289,7 +7289,6 @@ router bgp 65004
   network 10.57.3.80/29
   network 10.57.3.88/29
   network 10.57.3.96/29
-  network 10.57.3.104/29
  neighbor 10.0.0.133 remote-as 65515
  neighbor 10.0.0.133 ebgp-multihop 255
  neighbor 10.0.0.133 soft-reconfiguration inbound
