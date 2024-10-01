@@ -16,6 +16,13 @@ cat /etc/frr/frr.conf > /etc/frr/frr.conf.bak
 
 #### Run below the desired load test
 
+### 1K routes: https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main/ars-limits/1K-routes.txt
+rm /var/log/frr/bgpd.log #clean logs
+wget https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main/ars-limits/1K-routes.txt
+cp 1K-routes.txt /etc/frr/frr.conf
+systemctl restart frr #restart FRR daemon.
+tail -f /var/log/frr/bgpd.log
+
 ### 5K routes: https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main/ars-limits/5K-routes.txt
 rm /var/log/frr/bgpd.log #clean logs
 wget https://raw.githubusercontent.com/dmauser/azure-routeserver/refs/heads/main/ars-limits/5K-routes.txt
